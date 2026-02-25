@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MiniMe",
+  "version": "0.2.0",
+  "identifier": "com.tryminime.app",
+  "build": {
+    "beforeDevCommand": "",
+    "devUrl": "http://localhost:3000/dashboard/overview",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "MiniMe",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "resizable": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Privacy-first activity intelligence",
+    "longDescription": "MiniMe tracks your work patterns locally and gives you AI-powered insights. Your data never leaves your machine.",
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installMode": "perMachine"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "createUpdaterArtifacts": "v1Compatible"
+  },
+  "plugins": {
+    "autostart": {
+      "args": [
+        "--minimized"
+      ]
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/tryminime/MiniMe/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQxMTBBNjM5NjdBRDEzM0YKUldRL0U2MW5PYVlRMFVWYllSdFZ2R0cySHcyWi9ZWFlaUkRIa1JiL1BlQTVMMU5rSU1ucWRITEgK"
+    }
+  }
+}

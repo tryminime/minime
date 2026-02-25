@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================================================================
+   DESIGN SYSTEM — CSS CUSTOM PROPERTIES
+   ================================================================ */
+
+@layer base {
+    :root {
+        /* ── Surfaces ── */
+        --color-shell:     #F6F4F9;
+        --color-surface:   #FFFFFF;
+        --color-sidebar:   #F0EDF7;
+        --color-border:    #E5E7EB;
+
+        /* ── Text ── */
+        --color-primary:   #111827;
+        --color-secondary: #6B7280;
+        --color-muted:     #9CA3AF;
+
+        /* ── Accents ── */
+        --color-accent:       #2563EB;
+        --color-accent-hover: #1D4ED8;
+        --color-accent-light: rgba(37, 99, 235, 0.1);
+        --color-emerald:      #10B981;
+        --color-orange:       #F97316;
+
+        /* ── Semantic ── */
+        --color-success: #16A34A;
+        --color-warning: #FACC15;
+        --color-danger:  #EF4444;
+        --color-info:    #0EA5E9;
+
+        /* ── Typography ── */
+        --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+        /* ── Spacing ── */
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-6: 24px;
+        --space-8: 32px;
+        --space-10: 40px;
+
+        /* ── Radius ── */
+        --radius-shell: 24px;
+        --radius-card:  16px;
+        --radius-input: 14px;
+        --radius-pill:  9999px;
+
+        /* ── Shadows ── */
+        --shadow-card: 0 18px 45px rgba(15, 23, 42, 0.06);
+        --shadow-card-hover: 0 22px 50px rgba(15, 23, 42, 0.1);
+        --shadow-soft: 0 4px 12px rgba(15, 23, 42, 0.04);
+
+        /* ── Motion ── */
+        --ease-smooth: cubic-bezier(0.22, 0.61, 0.36, 1);
+        --duration-fast: 150ms;
+        --duration-normal: 200ms;
+    }
+
+    /* ── Dark Mode Variables (future-safe) ── */
+    .dark {
+        --color-shell:     #020617;
+        --color-surface:   #111827;
+        --color-sidebar:   #020617;
+        --color-border:    #1F2937;
+
+        --color-primary:   #F9FAFB;
+        --color-secondary: #E5E7EB;
+        --color-muted:     #9CA3AF;
+    }
+
+    /* ── Global Resets ── */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: var(--color-shell);
+        color: var(--color-primary);
+        font-family: var(--font-sans);
+        font-size: 14px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+}
+
+/* ================================================================
+   DESIGN SYSTEM — COMPONENT CLASSES
+   ================================================================ */
+
+@layer components {
+    /* ── Cards ── */
+    .ds-card {
+        @apply bg-surface rounded-card border border-border;
+        box-shadow: var(--shadow-card);
+        padding: var(--space-6);
+    }
+
+    .ds-card:hover {
+        box-shadow: var(--shadow-card-hover);
+        transform: scale(1.01);
+        transition: box-shadow 200ms var(--ease-smooth),
+                    transform 200ms var(--ease-smooth);
+    }
+
+    .ds-card-header {
+        @apply text-h3 text-primary mb-4;
+    }
+
+    .ds-card-footer {
+        @apply text-micro text-muted mt-4;
+    }
+
+    /* ── Buttons ── */
+    .ds-btn-primary {
+        @apply bg-accent text-white font-medium px-6 py-2 rounded-pill;
+        transition: background-color 180ms var(--ease-smooth),
+                    box-shadow 180ms var(--ease-smooth),
+                    transform 180ms var(--ease-smooth);
+    }
+
+    .ds-btn-primary:hover {
+        @apply bg-accent-hover;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .ds-btn-secondary {
+        @apply bg-transparent font-medium px-6 py-2 rounded-pill;
+        border: 1px solid #CBD5F5;
+        color: var(--color-accent-hover);
+        transition: all 180ms var(--ease-smooth);
+    }
+
+    .ds-btn-secondary:hover {
+        background: var(--color-accent-light);
+        transform: translateY(-1px);
+    }
+
+    .ds-btn-destructive {
+        @apply bg-danger text-white font-medium px-6 py-2 rounded-pill;
+        transition: all 180ms var(--ease-smooth);
+    }
+
+    .ds-btn-destructive:hover {
+        @apply bg-danger-hover;
+        transform: translateY(-1px);
+    }
+
+    /* ── Sidebar Nav Item ── */
+    .ds-nav-item {
+        @apply flex items-center gap-3 px-4 py-3 rounded-card text-left w-full;
+        color: var(--color-secondary);
+        transition: all 150ms var(--ease-smooth);
+    }
+
+    .ds-nav-item:hover {
+        background: rgba(37, 99, 235, 0.05);
+        color: var(--color-primary);
+    }
+
+    .ds-nav-item.active {
+        background: var(--color-accent-light);
+        color: var(--color-primary);
+        font-weight: 500;
+        position: relative;
+    }
+
+    .ds-nav-item.active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 25%;
+        height: 50%;
+        width: 3px;
+        background: var(--color-accent);
+        border-radius: var(--radius-pill);
+    }
+
+    .ds-nav-item .icon {
+        color: var(--color-muted);
+    }
+
+    .ds-nav-item.active .icon {
+        color: var(--color-accent);
+    }
+
+    /* ── Chips / Pills ── */
+    .ds-chip {
+        @apply inline-flex items-center rounded-pill px-3 py-1 text-micro font-medium;
+    }
+
+    .ds-chip-positive {
+        @apply ds-chip bg-emerald/10 text-success;
+    }
+
+    .ds-chip-negative {
+        @apply ds-chip bg-danger/10 text-danger;
+    }
+
+    .ds-chip-neutral {
+        @apply ds-chip bg-orange/10 text-orange;
+    }
+}
+
+/* ================================================================
+   DESIGN SYSTEM — UTILITY LAYER
+   ================================================================ */
+
+@layer utilities {
+    .text-balance {
+        text-wrap: balance;
+    }
+
+    /* ── Scrollbar ── */
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: var(--color-border);
+        border-radius: var(--radius-pill);
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: var(--color-muted);
+    }
+
+    /* ── Grid lines (for charts) ── */
+    .chart-grid {
+        stroke: #E5E7EB;
+        stroke-opacity: 0.4;
+    }
+}
