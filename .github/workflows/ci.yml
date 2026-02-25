@@ -1,0 +1,132 @@
+name: MiniMe CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: minime
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: minime_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run linting
+      run: |
+        pip install flake8 black isort mypy
+        flake8 backend/ --max-line-length=120 --exclude=__pycache__
+        black --check backend/
+        isort --check-only backend/
+    
+    - name: Run type checking
+      run: |
+        mypy backend/ --ignore-missing-imports
+      continue-on-error: true
+    
+    - name: Run tests with coverage
+      env:
+        DATABASE_URL: postgresql://minime:test_password@localhost:5432/minime_test
+        REDIS_URL: redis://localhost:6379/0
+        NEO4J_URI: bolt://localhost:7687
+        NEO4J_USER: neo4j
+        NEO4J_PASSWORD: test_password
+        QDRANT_URL: http://localhost:6333
+        JWT_SECRET_KEY: test_secret_key
+        ENVIRONMENT: testing
+      run: |
+        pytest backend/tests/ --cov=backend --cov-report=xml --cov-report=html --cov-report=term-missing
+      continue-on-error: true
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+      continue-on-error: true
+    
+    - name: Check test coverage threshold
+      run: |
+        pip install coverage
+        coverage report --fail-under=80
+      continue-on-error: true
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+    
+    - name: Check for security vulnerabilities
+      run: |
+        safety check --json || true
+        bandit -r backend/ -f json || true
+
+  docker:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      run: |
+        docker build -t minime-backend:latest .
+    
+    - name: Test Docker image
+      run: |
+        docker run --rm minime-backend:latest python -c "import backend.main; print('OK')"

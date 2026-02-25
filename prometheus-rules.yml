@@ -1,0 +1,237 @@
+# Prometheus Alert Rules for MiniMe Knowledge Graph
+# Defines alerts for critical system conditions
+
+groups:
+  # API Health Alerts
+  - name: api_health
+    interval: 30s
+    rules:
+      - alert: APIDown
+        expr: up{job="backend-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Backend API is down"
+          description: "Backend API has been down for more than 2 minutes"
+
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="backend-api"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High API latency detected"
+          description: "95th percentile latency is {{ $value }}s (threshold: 1s)"
+
+      - alert: HighAPIErrorRate
+        expr: rate(http_requests_total{job="backend-api",status=~"5.."}[5m]) / rate(http_requests_total{job="backend-api"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High API error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+  # Neo4j Cluster Alerts
+  - name: neo4j_cluster
+    interval: 30s
+    rules:
+      - alert: Neo4jNodeDown
+        expr: up{job=~"neo4j-core-.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: neo4j
+        annotations:
+          summary: "Neo4j cluster node is down"
+          description: "Neo4j node {{ $labels.instance }} has been down for more than 2 minutes"
+
+      - alert: Neo4jClusterDegraded
+        expr: count(up{job=~"neo4j-core-.*"} == 1) < 3
+        for: 5m
+        labels:
+          severity: critical
+          component: neo4j
+        annotations:
+          summary: "Neo4j cluster is degraded"
+          description: "Only {{ $value }} out of 3 Neo4j nodes are available"
+
+      - alert: Neo4jHighMemoryUsage
+        expr: neo4j_memory_heap_used_bytes / neo4j_memory_heap_max_bytes > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          component: neo4j
+        annotations:
+          summary: "Neo4j high memory usage"
+          description: "Neo4j {{ $labels.instance }} memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: Neo4jHighQueryLatency
+        expr: rate(neo4j_cypher_query_execution_latency_seconds_sum[5m]) / rate(neo4j_cypher_query_execution_latency_seconds_count[5m]) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: neo4j
+        annotations:
+          summary: "Neo4j high query latency"
+          description: "Average query latency is {{ $value }}s on {{ $labels.instance }}"
+
+  # Celery Worker Alerts
+  - name: celery_workers
+    interval: 30s
+    rules:
+      - alert: CeleryWorkerDown
+        expr: up{job="celery-workers"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Celery worker is down"
+          description: "Celery worker has been down for more than 5 minutes"
+
+      - alert: CeleryQueueBacklog
+        expr: celery_queue_length > 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Celery queue backlog"
+          description: "Celery queue has {{ $value }} pending tasks"
+
+      - alert: CeleryTaskFailureRate
+        expr: rate(celery_task_failed_total[5m]) / rate(celery_task_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "High Celery task failure rate"
+          description: "Task failure rate is {{ $value | humanizePercentage }}"
+
+  # Database Alerts
+  - name: databases
+    interval: 30s
+    rules:
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: postgres
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL has been down for more than 2 minutes"
+
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          component: postgres
+        annotations:
+          summary: "PostgreSQL high connection usage"
+          description: "Connection usage is {{ $value | humanizePercentage }}"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 2 minutes"
+
+      - alert: QdrantDown
+        expr: up{job="qdrant"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: qdrant
+        annotations:
+          summary: "Qdrant is down"
+          description: "Qdrant vector database has been down for more than 2 minutes"
+
+  # System Resource Alerts
+  - name: system_resources
+    interval: 30s
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceCritical
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical disk space"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }}"
+
+  # Graph-Specific Alerts
+  - name: graph_metrics
+    interval: 60s
+    rules:
+      - alert: GraphSizeAnomalous
+        expr: abs(delta(neo4j_node_count[1h])) > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: graph
+        annotations:
+          summary: "Anomalous graph size change"
+          description: "Graph size changed by {{ $value }} nodes in the last hour"
+
+      - alert: EmbeddingGenerationSlow
+        expr: rate(embedding_generation_duration_seconds_sum[10m]) / rate(embedding_generation_duration_seconds_count[10m]) > 60
+        for: 15m
+        labels:
+          severity: warning
+          component: embeddings
+        annotations:
+          summary: "Slow embedding generation"
+          description: "Average embedding generation time is {{ $value }}s"
+
+      - alert: CentralityComputationFailed
+        expr: increase(centrality_computation_failures_total[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          component: centrality
+        annotations:
+          summary: "Centrality computation failures"
+          description: "{{ $value }} centrality computation failures in the last hour"

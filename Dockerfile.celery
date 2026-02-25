@@ -1,0 +1,38 @@
+# Dockerfile for Celery Workers
+# Optimized for background task processing
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY backend/ ./backend/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV C_FORCE_ROOT=true
+
+# Create non-root user
+RUN useradd -m -u 1000 celeryuser && \
+    chown -R celeryuser:celeryuser /app
+
+USER celeryuser
+
+# Health check for Celery worker
+HEALTHCHECK --interval=60s --timeout=10s --start-period=60s --retries=3 \
+    CMD celery -A backend.celery_app inspect ping -d celery@$HOSTNAME || exit 1
+
+# Default command for worker
+CMD ["celery", "-A", "backend.celery_app", "worker", "--loglevel=info", "--concurrency=4", "--max-tasks-per-child=1000"]

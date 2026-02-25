@@ -1,0 +1,22 @@
+ollama>=0.1.0
+openai>=1.0.0
+anthropic>=0.18.0
+pyotp>=2.9.0
+qrcode>=7.4.2
+structlog>=23.1.0
+neo4j>=5.14.0
+jinja2>=3.1.2
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+orjson>=3.9.0
+
+# Analytics API dependencies
+weasyprint>=60.2  # PDF generation
+python-multipart>=0.0.6  # Form data handling
+jinja2>=3.1.3  # Template rendering
+markdown>=3.5.2  # Markdown to HTML conversion
+
+# Email delivery (optional - choose one)
+# sendgrid>=6.11.0  # SendGrid provider
+# boto3>=1.34.0  # AWS SES provider

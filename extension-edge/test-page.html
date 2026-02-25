@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniMe Extension Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .test-section h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #374151;
+        }
+
+        .instruction {
+            background: #fef3c7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 3px solid #f59e0b;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 3px solid #10b981;
+        }
+
+        .code {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .timer {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        ul {
+            line-height: 1.8;
+        }
+
+        code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔒 MiniMe Extension Test Page</h1>
+        <p class="subtitle">Stay on this page to test tab tracking functionality</p>
+
+        <div class="test-section">
+            <h2>✅ Extension Installation Test</h2>
+            <div class="instruction">
+                <strong>Step 1:</strong> Verify the extension is loaded
+                <ol>
+                    <li>Go to <code>chrome://extensions/</code></li>
+                    <li>Find "MiniMe Activity Tracker"</li>
+                    <li>Ensure it's <strong>enabled</strong> (toggle is blue)</li>
+                    <li>Click <strong>Reload</strong> button (🔄)</li>
+                </ol>
+            </div>
+            <div class="success" id="installStatus" style="display:none;">
+                ✓ Extension loaded successfully!
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>⏱️ Tab Tracking Test</h2>
+            <div class="instruction">
+                <strong>Instructions:</strong>
+                <ul>
+                    <li>Stay on this page for <strong>10 seconds</strong></li>
+                    <li>Watch the timer below count down</li>
+                    <li>An activity should be saved to IndexedDB</li>
+                </ul>
+            </div>
+            <div class="timer" id="timer">10s remaining...</div>
+            <button onclick="resetTimer()">Reset Timer</button>
+        </div>
+
+        <div class="test-section">
+            <h2>🔍 Verify Data Saved</h2>
+            <div class="instruction">
+                <strong>Check IndexedDB:</strong>
+                <ol>
+                    <li>Open DevTools (F12)</li>
+                    <li>Go to <strong>Application</strong> tab</li>
+                    <li>Expand <strong>IndexedDB</strong> → <strong>MiniMeActivities</strong> →
+                        <strong>activities</strong></li>
+                    <li>You should see an entry for this page</li>
+                </ol>
+            </div>
+
+            <div class="code">
+                Expected fields:<br>
+                • id: (UUID)<br>
+                • domain: "test-page" or current domain<br>
+                • durationSeconds: >= 10<br>
+                • synced: false<br>
+                • timestamp: (current date/time)<br>
+                • windowTitle: "MiniMe Extension Test Page"
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Service Worker Console Test</h2>
+            <div class="instruction">
+                <strong>Check for Errors:</strong>
+                <ol>
+                    <li>Go to <code>chrome://extensions/</code></li>
+                    <li>Find MiniMe → Click <strong>"service worker"</strong> link</li>
+                    <li>Check console for:
+                        <ul>
+                            <li>✅ "🚀 MiniMe Extension Service Worker starting..."</li>
+                            <li>✅ "🚀 TabTracker initialized"</li>
+                            <li>✅ "✅ IndexedDB initialized"</li>
+                            <li>✅ "✅ Service Worker ready"</li>
+                            <li>❌ NO errors about "import()" or "IDBKeyRange"</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔴 Badge Counter Test</h2>
+            <div class="instruction">
+                <strong>Check Badge:</strong>
+                <ul>
+                    <li>Look at the extension icon in Chrome toolbar</li>
+                    <li>Should show a <strong>number badge</strong> (e.g., "1", "2")</li>
+                    <li>Badge color should be <strong>purple</strong></li>
+                    <li>Number should match unsynced activities</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Run Console Tests</h2>
+            <div class="instruction">
+                <strong>Service Worker Console Commands:</strong>
+                <p>Open service worker DevTools and run these:</p>
+            </div>
+
+            <div class="code">
+                // Test 1: Get unsynced count<br>
+                chrome.runtime.sendMessage({action: 'getStatus'}, (r) => {<br>
+                console.log('Status:', r);<br>
+                console.log('Unsynced count:', r.status.unsyncedCount);<br>
+                });
+            </div>
+
+            <button onclick="copyCode(0)">Copy Test 1</button>
+
+            <div class="code">
+                // Test 2: Check IndexedDB directly<br>
+                indexedDB.open('MiniMeActivities', 1).onsuccess = (e) => {<br>
+                const db = e.target.result;<br>
+                const tx = db.transaction('activities', 'readonly');<br>
+                const store = tx.objectStore('activities');<br>
+                store.getAll().onsuccess = (e) => {<br>
+                console.log('All activities:', e.target.result);<br>
+                };<br>
+                };
+            </div>
+
+            <button onclick="copyCode(1)">Copy Test 2</button>
+        </div>
+
+        <div class="test-section">
+            <h2>✅ Success Criteria</h2>
+            <div class="success">
+                <strong>Extension is working if:</strong>
+                <ul style="margin: 10px 0;">
+                    <li>✓ No console errors</li>
+                    <li>✓ Activity saved to IndexedDB after 10s</li>
+                    <li>✓ Badge counter shows "1" or more</li>
+                    <li>✓ Popup opens without errors</li>
+                    <li>✓ Stats show in popup</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="window.location.href='https://www.wikipedia.org'">
+                Test on Wikipedia →
+            </button>
+            <button onclick="window.location.href='https://www.youtube.com'">
+                Test on YouTube →
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let timeLeft = 10;
+        let timerId;
+
+        function updateTimer() {
+            document.getElementById('timer').textContent =
+                timeLeft > 0 ? `${timeLeft}s remaining...` : '✅ Done! Check IndexedDB';
+
+            if (timeLeft > 0) {
+                timeLeft--;
+                timerId = setTimeout(updateTimer, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearTimeout(timerId);
+            timeLeft = 10;
+            updateTimer();
+        }
+
+        function copyCode(index) {
+            const codes = document.querySelectorAll('.code');
+            const text = codes[index].innerText.replace(/^\s+/gm, '');
+            navigator.clipboard.writeText(text);
+            alert('Code copied to clipboard!');
+        }
+
+        // Start timer on page load
+        updateTimer();
+
+        // Show install status
+        setTimeout(() => {
+            document.getElementById('installStatus').style.display = 'block';
+        }, 1000);
+    </script>
+</body>
+
+</html>

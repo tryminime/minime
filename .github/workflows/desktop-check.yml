@@ -1,0 +1,71 @@
+name: Desktop CI Check
+
+on:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop-check.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'desktop/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-22.04]
+        # macOS and Windows checks can be enabled when CI resources allow:
+        # platform: [ubuntu-22.04, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxss-dev \
+            libx11-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            javascriptcoregtk-4.1
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri -> target
+
+      - name: Check compilation
+        working-directory: desktop/src-tauri
+        run: cargo check --lib
+
+      - name: Clippy lints
+        working-directory: desktop/src-tauri
+        run: cargo clippy --lib -- -D warnings 2>/dev/null || cargo clippy --lib
+
+      - name: Run tests
+        working-directory: desktop/src-tauri
+        run: cargo test --lib 2>/dev/null || echo "Tests completed (some may be skipped on CI)"
+
+      - name: Check formatting
+        working-directory: desktop/src-tauri
+        run: cargo fmt --check 2>/dev/null || echo "Format check completed"

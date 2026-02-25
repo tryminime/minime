@@ -1,0 +1,132 @@
+name: Release MiniMe
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-tauri:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: '*.dmg'
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: '*.dmg'
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: '*.exe'
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            artifact: '*.AppImage'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build and release Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS signing (set in repo secrets for production)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: './desktop'
+          tagName: ${{ github.ref_name }}
+          releaseName: 'MiniMe ${{ github.ref_name }}'
+          releaseBody: |
+            ## MiniMe ${{ github.ref_name }}
+
+            ### Download
+            | Platform | File | Notes |
+            |----------|------|-------|
+            | macOS (Apple Silicon) | `MiniMe_*_aarch64.dmg` | M1/M2/M3 Macs |
+            | macOS (Intel) | `MiniMe_*_x64.dmg` | Intel Macs |
+            | Windows | `MiniMe_*_x64-setup.exe` | Windows 10/11 |
+            | Linux | `MiniMe_*_amd64.AppImage` | Any distro |
+            | Linux (Debian/Ubuntu) | `MiniMe_*_amd64.deb` | Debian-based |
+
+            ### Requirements
+            - Docker Desktop (installed automatically if missing on macOS/Windows)
+            - 4 GB RAM minimum, 8 GB recommended
+            - 10 GB free disk space
+
+            ### First Run
+            1. Install Docker Desktop if prompted
+            2. MiniMe will start its local databases automatically
+            3. Visit `http://app.tryminime.com` or use the app window
+            4. Create your account — everything stays on your machine
+          releaseDraft: false
+          prerelease: false
+          args: '--target ${{ matrix.target }}'
+
+  build-backend-bundle:
+    name: Build backend bundle
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Bundle installer scripts
+        run: |
+          mkdir -p dist/installer
+          cp installer/setup.sh dist/installer/
+          cp installer/setup.ps1 dist/installer/
+          cp installer/docker-compose.local.yml dist/installer/
+          tar czf minime-installer-scripts.tar.gz -C dist/installer .
+
+      - name: Upload installer scripts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: minime-installer-scripts.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

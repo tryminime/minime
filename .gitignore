@@ -1,0 +1,111 @@
+# ══════════════════════════════════════════════════════════
+# MiniMe .gitignore — Only track project-essential files
+# ══════════════════════════════════════════════════════════
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.pyo
+
+# ── Virtual Environment ──────────────────────────────────
+venv/
+env/
+ENV/
+.venv/
+
+# ── Environment Variables (secrets!) ─────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── IDE / Editor ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ── Testing / Coverage ───────────────────────────────────
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+.hypothesis/
+.nox/
+
+# ── Databases (local) ───────────────────────────────────
+*.db
+*.sqlite3
+
+# ── Logs / Output ────────────────────────────────────────
+*.log
+logs/
+nohup.out
+output.txt
+backend.log
+
+# ── Docker ───────────────────────────────────────────────
+.dockerignore
+
+# ── OS Files ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+._*
+
+# ── Node / Frontend ──────────────────────────────────────
+node_modules/
+.next/
+out/
+.turbo/
+.vercel/
+*.tsbuildinfo
+
+# ── Tauri / Desktop Build ───────────────────────────────
+desktop/src-tauri/target/
+desktop/dist/
+desktop/src-tauri/.keys/minime.key
+
+# ── Rust ─────────────────────────────────────────────────
+target/
+Cargo.lock
+
+# ── Temporary / Scratch ──────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak
+
+# ── Personal Notes & Artifacts (NOT project docs) ───────
+Markdown/
+Start.txt
+.gemini/
+test-queue-integration.sh
+test-week7.sh
+TESTING_REPORT.md
+
+# ── Monitoring data (ephemeral) ──────────────────────────
+monitoring/
