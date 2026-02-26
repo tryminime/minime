@@ -1,9 +1,8 @@
 //! macOS-specific activity tracking implementation.
 
-#[cfg(target_os = "macos")]
-use cocoa::appkit::NSRunningApplication;
+use cocoa::appkit::{NSRunningApplication, NSWorkspace};
 use cocoa::base::{id, nil};
-use cocoa::foundation::{NSArray, NSString};
+use cocoa::foundation::NSString;
 use objc::{msg_send, sel, sel_impl};
 use crate::tracker::{ActivityTracker, WindowInfo};
 
@@ -35,8 +34,6 @@ impl MacOSTracker {
             };
             
             let process_id: i32 = msg_send![app, processIdentifier];
-            
-            // Get window title via Accessibility API
             let window_title = self.get_window_title_ax(process_id).unwrap_or_default();
             
             Some(WindowInfo {
@@ -47,11 +44,8 @@ impl MacOSTracker {
         }
     }
 
-    /// Try to get the focused window's title via AXUIElement (Accessibility API).
-    /// Requires the user to grant Accessibility permissions in System Preferences.
     fn get_window_title_ax(&self, pid: i32) -> Option<String> {
         unsafe {
-            // Create AXUIElement for the application
             let ax_app: id = msg_send![
                 class!(NSRunningApplication),
                 runningApplicationWithProcessIdentifier: pid
@@ -60,9 +54,6 @@ impl MacOSTracker {
                 return None;
             }
 
-            // For now, try to get the app's main menu title as window title fallback
-            // Full AXUIElement support requires core-foundation and accessibility crate
-            // which we'll add in a follow-up
             let app_name: id = msg_send![ax_app, localizedName];
             if app_name != nil {
                 let bytes: *const u8 = msg_send![app_name, UTF8String];
@@ -77,8 +68,6 @@ impl MacOSTracker {
 impl ActivityTracker for MacOSTracker {
     fn start(&mut self) -> Result<(), String> {
         log::info!("Started macOS activity tracker");
-        // Note: May require accessibility permissions
-        // User will need to grant permissions in System Preferences
         Ok(())
     }
     
@@ -92,17 +81,12 @@ impl ActivityTracker for MacOSTracker {
     
     fn is_idle(&self) -> bool {
         unsafe {
-            // Use CGEventSourceSecondsSinceLastEventType to detect idle time
-            // This uses the combined HID event source (mouse + keyboard)
             extern "C" {
                 fn CGEventSourceSecondsSinceLastEventType(
                     source_state_id: i32,
                     event_type: u32,
                 ) -> f64;
             }
-            
-            // kCGEventSourceStateCombinedSessionState = 0
-            // kCGAnyInputEventType = ~0 (all events)
             let idle_secs = CGEventSourceSecondsSinceLastEventType(0, u32::MAX);
             idle_secs >= IDLE_THRESHOLD_SECS
         }

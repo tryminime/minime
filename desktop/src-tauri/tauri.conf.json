@@ -57,7 +57,7 @@
         "bundleMediaFramework": false
       }
     },
-    "createUpdaterArtifacts": "v1Compatible"
+    "createUpdaterArtifacts": false
   },
   "plugins": {
     "autostart": {
