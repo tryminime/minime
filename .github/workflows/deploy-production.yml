@@ -1,12 +1,13 @@
 name: Deploy to Vercel (Production)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'website/**'
-      - '.github/workflows/deploy-production.yml'
+  # Only allow manual deployment until VERCEL_TOKEN secret is configured in GitHub Settings
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: false
+        default: 'production'
 
 jobs:
   deploy:
@@ -15,7 +16,7 @@ jobs:
     environment:
       name: production
       url: https://www.tryminime.com
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
