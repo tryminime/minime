@@ -57,8 +57,7 @@ jobs:
 
       - name: Build application
         working-directory: ./website
-        run: npm run build
+        run: npx next build --webpack
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:8000' }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST || '' }}
-          NEXT_TURBOPACK: '0'
+          NEXT_PUBLIC_API_URL: 'http://localhost:8000'
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ''
