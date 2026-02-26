@@ -1,7 +1,7 @@
 //! macOS-specific activity tracking implementation.
 
 #[cfg(target_os = "macos")]
-use cocoa::appkit::{NSRunningApplication, NSWorkspace};
+use cocoa::appkit::NSRunningApplication;
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSArray, NSString};
 use objc::{msg_send, sel, sel_impl};
