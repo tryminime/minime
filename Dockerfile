@@ -2,6 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Build arg to select requirements file (use requirements-ci.txt in CI)
+ARG REQUIREMENTS_FILE=requirements.txt
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -10,9 +13,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements*.txt ./
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-build-isolation --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r ${REQUIREMENTS_FILE}
 
 # Copy application code
 COPY . .

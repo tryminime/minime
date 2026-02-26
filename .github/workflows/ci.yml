@@ -109,8 +109,12 @@ jobs:
     
     - name: Build Docker image
       run: |
-        docker build -t minime-backend:latest -f Dockerfile .
+        docker build \
+          --build-arg REQUIREMENTS_FILE=requirements-ci.txt \
+          -t minime-backend:ci \
+          -f Dockerfile .
     
     - name: Test Docker image
       run: |
-        docker run --rm minime-backend:latest python -c "print('Docker build OK')"
+        docker run --rm minime-backend:ci python -c "import fastapi; print('Docker build OK')"
+
