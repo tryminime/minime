@@ -42,17 +42,56 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
+    "@babel/preset-env": "^7.27.0",
+    "@babel/preset-react": "^7.27.0",
+    "@babel/preset-typescript": "^7.27.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/cypress-axe": "^0.8.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "babel-jest": "^29.7.0",
     "cypress": "^15.10.0",
     "cypress-axe": "^1.7.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "lighthouse": "^13.0.3",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterFramework": [
+      "@testing-library/jest-dom"
+    ],
+    "transform": {
+      "^.+\\.(js|jsx|ts|tsx)$": [
+        "babel-jest",
+        {
+          "presets": [
+            "@babel/preset-env",
+            [
+              "@babel/preset-react",
+              {
+                "runtime": "automatic"
+              }
+            ],
+            "@babel/preset-typescript"
+          ]
+        }
+      ]
+    },
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "\\.(css|less|scss|sass)$": "<rootDir>/__mocks__/styleMock.js"
+    },
+    "testPathPattern": "src/__tests__",
+    "passWithNoTests": true
   }
 }
