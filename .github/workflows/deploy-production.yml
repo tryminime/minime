@@ -1,7 +1,8 @@
 name: Deploy to Vercel (Production)
 
 on:
-  # Only allow manual deployment until VERCEL_TOKEN secret is configured in GitHub Settings
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -16,6 +17,9 @@ jobs:
     environment:
       name: production
       url: https://www.tryminime.com
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
     steps:
       - name: Checkout code
