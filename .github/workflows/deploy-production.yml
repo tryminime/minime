@@ -35,8 +35,10 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Bypass Vercel Git Author Check
-        run: rm -rf .git
+      - name: Override Git Author for Vercel
+        run: |
+          git config user.email "tryminime.online@gmail.com"
+          git config user.name "tryminime"
 
       - name: Pull Vercel Environment Information
         working-directory: ./website
@@ -44,6 +46,8 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_GIT_COMMIT_AUTHOR_EMAIL: 'tryminime.online@gmail.com'
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: 'tryminime'
 
       - name: Build Project Artifacts
         working-directory: ./website
@@ -51,6 +55,8 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_GIT_COMMIT_AUTHOR_EMAIL: 'tryminime.online@gmail.com'
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: 'tryminime'
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL_PROD || 'https://api.tryminime.com' }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_PROD || '' }}
 
