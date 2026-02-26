@@ -33,7 +33,6 @@ log = "0.4"
 env_logger = "0.11"
 uuid = { version = "1.11", features = ["v4", "serde"] }
 base64 = "0.22"
-xcap = "0.0.15"
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 # Platform-specific dependencies for window tracking
@@ -44,10 +43,13 @@ windows = { version = "0.58", features = [
     "Win32_System_Threading",
     "Win32_System_ProcessStatus"
 ] }
+xcap = "0.8.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
 objc = "0.2"
+xcap = "0.8.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 x11 = { version = "2.21", features = ["xlib", "xss"] }
+xcap = "0.0.15"
