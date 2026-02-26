@@ -90,7 +90,7 @@ impl ActivityTracker for WindowsTracker {
     fn get_current_window(&self) -> Option<WindowInfo> {
         unsafe {
             let hwnd = GetForegroundWindow();
-            if hwnd.0 == 0 {
+            if hwnd.0.is_null() {
                 return None;
             }
             

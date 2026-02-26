@@ -5,7 +5,9 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+#[cfg(not(target_os = "macos"))]
 use std::io::Cursor;
+#[cfg(not(target_os = "macos"))]
 use xcap::Monitor;
 
 use crate::encryption::EncryptionManager;
@@ -63,6 +65,7 @@ impl ScreenshotManager {
     }
 
     /// Capture the full primary monitor screen
+    #[cfg(not(target_os = "macos"))]
     pub fn capture(&self, label: Option<String>) -> Result<CaptureResult, String> {
         let monitors = Monitor::all().map_err(|e| format!("Failed to enumerate monitors: {}", e))?;
 
@@ -73,7 +76,14 @@ impl ScreenshotManager {
         self.capture_monitor(monitor, label)
     }
 
+    /// macOS stub — xcap not supported on macOS in this version
+    #[cfg(target_os = "macos")]
+    pub fn capture(&self, _label: Option<String>) -> Result<CaptureResult, String> {
+        Err("Screenshot capture is not supported on macOS in this release".to_string())
+    }
+
     /// Capture a specific monitor by index
+    #[cfg(not(target_os = "macos"))]
     pub fn capture_monitor_by_index(
         &self,
         index: usize,
@@ -88,7 +98,14 @@ impl ScreenshotManager {
         self.capture_monitor(monitor, label)
     }
 
-    /// Internal: capture from a specific monitor
+    /// macOS stub
+    #[cfg(target_os = "macos")]
+    pub fn capture_monitor_by_index(&self, _index: usize, _label: Option<String>) -> Result<CaptureResult, String> {
+        Err("Screenshot capture is not supported on macOS in this release".to_string())
+    }
+
+    /// Internal: capture from a specific monitor (Linux/Windows only)
+    #[cfg(not(target_os = "macos"))]
     fn capture_monitor(
         &self,
         monitor: &Monitor,
@@ -275,6 +292,7 @@ impl ScreenshotManager {
     }
 
     /// List available monitors
+    #[cfg(not(target_os = "macos"))]
     pub fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
         let monitors = Monitor::all().map_err(|e| format!("Failed to enumerate monitors: {}", e))?;
 
@@ -289,6 +307,12 @@ impl ScreenshotManager {
                 is_primary: i == 0,
             })
             .collect())
+    }
+
+    /// macOS stub
+    #[cfg(target_os = "macos")]
+    pub fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
+        Ok(vec![])
     }
 }
 
