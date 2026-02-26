@@ -107,7 +107,7 @@ impl ScreenshotManager {
         let mut png_buffer = Vec::new();
         let mut cursor = Cursor::new(&mut png_buffer);
         image
-            .write_to(&mut cursor, image::ImageFormat::Png)
+            .write_to(&mut cursor, xcap::image::ImageFormat::Png)
             .map_err(|e| format!("PNG encoding failed: {}", e))?;
 
         let file_size_bytes = png_buffer.len();
