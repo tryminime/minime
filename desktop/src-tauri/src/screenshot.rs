@@ -103,12 +103,20 @@ impl ScreenshotManager {
         let height = image.height();
         let monitor_name = monitor.name().to_string();
 
-        // Encode as PNG into memory buffer
+        // Encode as PNG into memory buffer using the raw RGBA pixel data
+        // (avoids image crate version conflict between xcap's 0.24 and our 0.25)
         let mut png_buffer = Vec::new();
-        let mut cursor = Cursor::new(&mut png_buffer);
-        image
-            .write_to(&mut cursor, image::ImageFormat::Png)
+        {
+            use image::ImageEncoder;
+            let encoder = image::codecs::png::PngEncoder::new(&mut png_buffer);
+            encoder.write_image(
+                image.as_raw(),
+                width,
+                height,
+                image::ExtendedColorType::Rgba8,
+            )
             .map_err(|e| format!("PNG encoding failed: {}", e))?;
+        }
 
         let file_size_bytes = png_buffer.len();
 

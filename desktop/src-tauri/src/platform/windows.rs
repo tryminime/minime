@@ -63,7 +63,7 @@ impl WindowsTracker {
             let mut buffer: Vec<u16> = vec![0; 260];  // MAX_PATH
             let mut size = buffer.len() as u32;
             
-            if QueryFullProcessImageNameW(handle, PROCESS_NAME_WIN32, buffer.as_mut_slice()).is_ok() {
+            if QueryFullProcessImageNameW(handle, PROCESS_NAME_WIN32, PWSTR::from_raw(buffer.as_mut_ptr()), &mut size).is_ok() {
                 let _ = CloseHandle(handle);
                 
                 // Get just the filename from the full path
@@ -78,7 +78,7 @@ impl WindowsTracker {
 }
 
 impl ActivityTracker for WindowsTracker {
-    fn start(&mut self) -> Result<(), String> {
+    fn start(&mut self) -> std::result::Result<(), String> {
         log::info!("Starting Windows activity tracker");
         Ok(())
     }
