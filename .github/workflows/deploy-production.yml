@@ -60,6 +60,8 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_GIT_COMMIT_AUTHOR_EMAIL: 'tryminime.online@gmail.com'
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: 'tryminime'
 
       - name: Deployment Summary
         run: |

@@ -6,10 +6,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
-
-#[cfg(target_os = "linux")]
-extern crate xcap_linux as xcap;
-
 use xcap::Monitor;
 
 use crate::encryption::EncryptionManager;
@@ -105,16 +101,13 @@ impl ScreenshotManager {
 
         let width = image.width();
         let height = image.height();
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
-        let monitor_name = monitor.name().unwrap_or_else(|_| "Unknown".to_string());
-        #[cfg(target_os = "linux")]
         let monitor_name = monitor.name().to_string();
 
         // Encode as PNG into memory buffer
         let mut png_buffer = Vec::new();
         let mut cursor = Cursor::new(&mut png_buffer);
         image
-            .write_to(&mut cursor, xcap::image::ImageFormat::Png)
+            .write_to(&mut cursor, image::ImageFormat::Png)
             .map_err(|e| format!("PNG encoding failed: {}", e))?;
 
         let file_size_bytes = png_buffer.len();
@@ -282,17 +275,8 @@ impl ScreenshotManager {
             .enumerate()
             .map(|(i, m)| MonitorInfo {
                 index: i,
-                #[cfg(any(target_os = "macos", target_os = "windows"))]
-                name: m.name().unwrap_or_else(|_| format!("Monitor {}", i)),
-                #[cfg(target_os = "linux")]
                 name: m.name().to_string(),
-                #[cfg(any(target_os = "macos", target_os = "windows"))]
-                width: m.width().unwrap_or(0),
-                #[cfg(target_os = "linux")]
                 width: m.width(),
-                #[cfg(any(target_os = "macos", target_os = "windows"))]
-                height: m.height().unwrap_or(0),
-                #[cfg(target_os = "linux")]
                 height: m.height(),
                 is_primary: i == 0,
             })
