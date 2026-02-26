@@ -48,7 +48,7 @@ class SettingsAPIService {
     /**
      * Update tracking settings
      */
-    async updateTracking(tracking: Settings['tracking']): Promise<void> {
+    async updateTracking(tracking: Settings['activityTracking']): Promise<void> {
         try {
             await this.client.put('/api/settings/tracking', tracking);
         } catch (error) {
@@ -169,7 +169,7 @@ class SettingsAPIService {
         try {
             await Promise.all([
                 this.updateProfile(settings.profile),
-                this.updateTracking(settings.tracking),
+                this.updateTracking(settings.activityTracking),
                 this.updateFocus(settings.focus),
                 this.updatePrivacy(settings.privacy),
                 this.updateNotifications(settings.notifications),

@@ -154,7 +154,7 @@ interface SettingsInputProps {
     description?: string;
     value: string | number;
     onChange: (value: string) => void;
-    type?: 'text' | 'email' | 'number' | 'password';
+    type?: 'text' | 'email' | 'number' | 'password' | 'time';
     placeholder?: string;
     disabled?: boolean;
     required?: boolean;
