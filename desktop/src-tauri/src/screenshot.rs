@@ -6,6 +6,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
+
+#[cfg(target_os = "linux")]
+extern crate xcap_linux as xcap;
+
 use xcap::Monitor;
 
 use crate::encryption::EncryptionManager;
