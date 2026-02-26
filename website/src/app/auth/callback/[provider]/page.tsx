@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '@/lib/auth';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -8,8 +8,9 @@ import { useAuthStore } from '@/lib/store/authStore';
 export default function OAuthCallbackPage({
     params,
 }: {
-    params: { provider: string };
+    params: Promise<{ provider: string }>;
 }) {
+    const { provider } = use(params);
     const router = useRouter();
     const searchParams = useSearchParams();
     const setUser = useAuthStore((s) => s.setUser);
@@ -32,7 +33,7 @@ export default function OAuthCallbackPage({
 
                 // Handle OAuth callback
                 const user = await authService.handleOAuthCallback(
-                    params.provider,
+                    provider,
                     code,
                     state || undefined
                 );
@@ -53,7 +54,7 @@ export default function OAuthCallbackPage({
         };
 
         handleCallback();
-    }, [params.provider, searchParams, setUser, router]);
+    }, [provider, searchParams, setUser, router]);
 
     if (error) {
         return (
@@ -77,8 +78,9 @@ export default function OAuthCallbackPage({
             <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
                 <h1 className="text-2xl font-bold mb-2">Authenticating...</h1>
-                <p className="text-gray-600">Please wait while we sign you in with {params.provider}.</p>
+                <p className="text-gray-600">Please wait while we sign you in with {provider}.</p>
             </div>
         </div>
     );
 }
+
