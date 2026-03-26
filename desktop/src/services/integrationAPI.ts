@@ -1,6 +1,14 @@
 /**
  * Integration API Service
  * Handles OAuth flows and integration management for GitHub, Google Calendar, and Notion
+ *
+ * TODO: The following backend routes called by this service do NOT exist yet:
+ *   - GET  /api/integrations/github/repos
+ *   - POST /api/integrations/github/repos/track
+ *   - DELETE /api/integrations/github/repos/{repo}
+ *   - GET  /api/integrations/google/calendars
+ *   - GET  /api/integrations/notion/databases
+ * These will 404 until their backend endpoints are implemented.
  */
 
 import { getAPIClient } from './api';

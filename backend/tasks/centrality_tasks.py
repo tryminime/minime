@@ -8,7 +8,7 @@ from typing import Dict, Any
 import logging
 from datetime import datetime
 
-from backend.services.centrality_service import centrality_service
+from services.centrality_service import centrality_service
 
 logger = logging.getLogger(__name__)
 

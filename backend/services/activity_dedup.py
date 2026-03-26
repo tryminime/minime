@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 from uuid import UUID
 import hashlib
 
-from backend.models import Activity
-from backend.api.v1.schemas.activity_schemas import ActivityIngestItem
+from models import Activity
+from api.v1.schemas.activity_schemas import ActivityIngestItem
 
 
 class ActivityDeduplicator:

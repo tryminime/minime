@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid as uuid_lib
 
-from backend.database.postgres import Base
+from database.postgres import Base
 
 
 class Integration(Base):

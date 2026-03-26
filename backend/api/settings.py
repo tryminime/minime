@@ -4,8 +4,8 @@ FastAPI backend endpoints for Settings and AI Chat integration
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
-from ..auth.jwt_handler import get_current_user
-from ..database.postgres_client import get_db
+from auth.jwt_handler import get_current_user
+from database.postgres_client import get_db
 from sqlalchemy.orm import Session
 import pyotp
 import base64
@@ -217,7 +217,7 @@ async def change_password(
     db: Session = Depends(get_db)
 ):
     """Change user password"""
-    from ..auth.password import verify_password, hash_password
+    from auth.password import verify_password, hash_password
     
     # Verify old password
     # Hash and update new password

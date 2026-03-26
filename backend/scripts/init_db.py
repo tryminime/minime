@@ -10,8 +10,8 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.database.postgres import Base, engine, init_db
-from backend.models import User, Session, Activity, Entity, AuditLog
+from database.postgres import Base, engine, init_db
+from models import User, Session, Activity, Entity, AuditLog
 import structlog
 
 logger = structlog.get_logger()

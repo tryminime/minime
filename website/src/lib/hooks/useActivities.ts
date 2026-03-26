@@ -12,6 +12,35 @@ export interface ActivityItem {
     domain: string | null;
     duration_seconds: number | null;
     created_at: string;
+    data: {
+        started_at?: string;
+        ended_at?: string;
+        file_path?: string;
+        file_name?: string;
+        file_type?: string;
+        files?: { path: string; name: string; type: string; content_preview?: string }[];
+        working_directory?: string;
+        content_summary?: string;
+        is_focused?: boolean;
+        device_id?: string;
+        pid?: number;
+    } | null;
+    context?: {
+        url?: string;
+        domain?: string;
+        title?: string;
+        app_name?: string;
+        reading?: {
+            scroll_depth_pct?: number;
+            time_on_page_sec?: number;
+            word_count?: number;
+            estimated_read_time_sec?: number;
+            estimated_read_pct?: number;
+            selection_count?: number;
+            user_interacted?: boolean;
+        };
+        [key: string]: any;
+    } | null;
 }
 
 export interface ActivityListResponse {
@@ -35,7 +64,8 @@ export function useActivities(type?: string, limit: number = 100, offset: number
             }
             return api.get<ActivityListResponse>(`/api/v1/activities?${params.toString()}`);
         },
-        staleTime: 2 * 60 * 1000,
+        staleTime: 30 * 1000,
+        refetchInterval: 30 * 1000,
         retry: 2,
     });
 }
@@ -46,6 +76,19 @@ export function useDeleteActivity() {
 
     return useMutation({
         mutationFn: (activityId: string) => api.delete(`/api/v1/activities/${activityId}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['activities'] });
+        },
+    });
+}
+
+export function useBulkDeleteActivities() {
+    const api = getAPIClient();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (activityIds: string[]) =>
+            api.post('/api/v1/activities/bulk-delete', { activity_ids: activityIds }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['activities'] });
         },

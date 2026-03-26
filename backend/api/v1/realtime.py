@@ -3,8 +3,8 @@ WebSocket endpoint for real-time updates.
 """
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
-from backend.websocket.manager import manager
-from backend.auth.jwt_handler import decode_token
+from websocket.manager import manager
+from auth.jwt_handler import decode_token
 import structlog
 
 logger = structlog.get_logger()

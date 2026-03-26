@@ -1,242 +1,182 @@
 """
-Stripe Webhook Handler for MiniMe Platform
-Processes Stripe webhook events for subscription lifecycle
+Stripe Webhook Handler — Async SQLAlchemy version
+Routes: POST /api/webhooks/stripe
 """
-
-from fastapi import APIRouter, Request, HTTPException, Header
-from fastapi.responses import JSONResponse
-import stripe
 import os
-import json
-from datetime import datetime
-from typing import Optional
+import stripe
+import structlog
+from fastapi import APIRouter, Request, HTTPException, Depends
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...database import get_db
-from ...services.stripe_service import StripeService
+from database.postgres import get_db
+from models import User
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
+logger = structlog.get_logger()
 
-WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
+WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
-
-def log_billing_event(db, user_id: Optional[int], event_type: str, stripe_event_id: str, event_data: dict):
-    """Log billing event to database"""
-    cursor = db.cursor()
-    cursor.execute(
-        """
-        INSERT INTO billing_events (user_id, event_type, stripe_event_id, event_data, processed)
-        VALUES (%s, %s, %s, %s, FALSE)
-        ON CONFLICT (stripe_event_id) DO NOTHING
-        """,
-        (user_id, event_type, stripe_event_id, json.dumps(event_data))
-    )
-    db.commit()
-    cursor.close()
+# Map Stripe price IDs → DB tier values
+def _build_price_tier_map() -> dict:
+    return {
+        os.getenv("STRIPE_PRICE_PRO_MONTHLY", "__pro__"): "premium",
+        os.getenv("STRIPE_PRICE_ENTERPRISE_MONTHLY", "__ent__"): "enterprise",
+    }
 
 
-def get_user_id_from_customer(db, customer_id: str) -> Optional[int]:
-    """Get user_id from Stripe customer_id"""
-    cursor = db.cursor()
-    cursor.execute(
-        "SELECT user_id FROM subscriptions WHERE stripe_customer_id = %s",
-        (customer_id,)
-    )
-    result = cursor.fetchone()
-    cursor.close()
-    return result[0] if result else None
+async def _find_user_by_customer(db: AsyncSession, customer_id: str) -> User | None:
+    """Locate user whose preferences JSON contains the given Stripe customer_id."""
+    result = await db.execute(select(User))
+    users = result.scalars().all()
+    for u in users:
+        prefs = u.preferences or {}
+        if prefs.get("stripe_customer_id") == customer_id:
+            return u
+    return None
 
 
 @router.post("/stripe")
 async def stripe_webhook(
     request: Request,
-    stripe_signature: str = Header(None, alias="stripe-signature"),
-    db=Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
-    Handle Stripe webhook events
+    Handle Stripe webhook events — signature-verified, idempotent.
     https://stripe.com/docs/webhooks
     """
-    
     payload = await request.body()
-    
-    # Verify webhook signature
+    sig_header = request.headers.get("stripe-signature", "")
+
     try:
-        event = StripeService.construct_webhook_event(
-            payload,
-            stripe_signature,
-            WEBHOOK_SECRET
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid payload")
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
-    
-    event_type = event['type']
-    event_data = event['data']['object']
-    
-    print(f"Received webhook: {event_type} - {event['id']}")
-    
-    cursor = db.cursor()
-    
-    try:
-        # Handle different event types
-        if event_type == 'checkout.session.completed':
-            # Payment successful, subscription created
-            session = event_data
-            customer_id = session.get('customer')
-            subscription_id = session.get('subscription')
-            
-            user_id = get_user_id_from_customer(db, customer_id)
-            
-            if user_id:
-                # Update subscription record
-                cursor.execute(
-                    """
-                    UPDATE subscriptions
-                    SET stripe_subscription_id = %s, status = 'active'
-                    WHERE user_id = %s
-                    """,
-                    (subscription_id, user_id)
-                )
-                db.commit()
-                
-                log_billing_event(db, user_id, event_type, event['id'], event_data)
-                print(f"Checkout completed for user {user_id}")
-        
-        elif event_type == 'customer.subscription.created':
-            subscription = event_data
-            customer_id = subscription.get('customer')
-            user_id = get_user_id_from_customer(db, customer_id)
-            
-            if user_id:
-                # Get plan type from metadata or price
-                plan_type = subscription.get('metadata', {}).get('plan_type', 'pro')
-                
-                cursor.execute(
-                    """
-                    UPDATE subscriptions
-                    SET stripe_subscription_id = %s,
-                        status = %s,
-                        current_period_start = to_timestamp(%s),
-                        current_period_end = to_timestamp(%s),
-                        plan_type = %s
-                    WHERE user_id = %s
-                    """,
-                    (
-                        subscription['id'],
-                        subscription['status'],
-                        subscription['current_period_start'],
-                        subscription['current_period_end'],
-                        plan_type,
-                        user_id
-                    )
-                )
-                db.commit()
-                
-                log_billing_event(db, user_id, event_type, event['id'], event_data)
-                print(f"Subscription created for user {user_id}")
-        
-        elif event_type == 'customer.subscription.updated':
-            subscription = event_data
-            customer_id = subscription.get('customer')
-            user_id = get_user_id_from_customer(db, customer_id)
-            
-            if user_id:
-                cursor.execute(
-                    """
-                    UPDATE subscriptions
-                    SET status = %s,
-                        current_period_start = to_timestamp(%s),
-                        current_period_end = to_timestamp(%s),
-                        cancel_at_period_end = %s
-                    WHERE user_id = %s
-                    """,
-                    (
-                        subscription['status'],
-                        subscription['current_period_start'],
-                        subscription['current_period_end'],
-                        subscription.get('cancel_at_period_end', False),
-                        user_id
-                    )
-                )
-                db.commit()
-                
-                log_billing_event(db, user_id, event_type, event['id'], event_data)
-                print(f"Subscription updated for user {user_id}")
-        
-        elif event_type == 'customer.subscription.deleted':
-            subscription = event_data
-            customer_id = subscription.get('customer')
-            user_id = get_user_id_from_customer(db, customer_id)
-            
-            if user_id:
-                # Downgrade to free plan
-                cursor.execute(
-                    """
-                    UPDATE subscriptions
-                    SET status = 'canceled',
-                        plan_type = 'free',
-                        canceled_at = CURRENT_TIMESTAMP,
-                        stripe_subscription_id = NULL
-                    WHERE user_id = %s
-                    """,
-                    (user_id,)
-                )
-                db.commit()
-                
-                log_billing_event(db, user_id, event_type, event['id'], event_data)
-                print(f"Subscription canceled for user {user_id}, downgraded to free")
-        
-        elif event_type == 'invoice.payment_succeeded':
-            invoice = event_data
-            customer_id = invoice.get('customer')
-            user_id = get_user_id_from_customer(db, customer_id)
-            
-            if user_id:
-                log_billing_event(db, user_id, event_type, event['id'], event_data)
-                print(f"Payment succeeded for user {user_id}")
-        
-        elif event_type == 'invoice.payment_failed':
-            invoice = event_data
-            customer_id = invoice.get('customer')
-            user_id = get_user_id_from_customer(db, customer_id)
-            
-            if user_id:
-                # Mark subscription as past_due
-                cursor.execute(
-                    "UPDATE subscriptions SET status = 'past_due' WHERE user_id = %s",
-                    (user_id,)
-                )
-                db.commit()
-                
-                log_billing_event(db, user_id, event_type, event['id'], event_data)
-                print(f"Payment failed for user {user_id}")
-        
-        else:
-            print(f"Unhandled event type: {event_type}")
-        
-        # Mark event as processed
-        cursor.execute(
-            "UPDATE billing_events SET processed = TRUE WHERE stripe_event_id = %s",
-            (event['id'],)
-        )
-        db.commit()
-    
-    except Exception as e:
-        db.rollback()
-        print(f"Error processing webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-    
-    return {"status": "success"}
+
+    etype = event["type"]
+    obj = event["data"]["object"]
+    logger.info("stripe_webhook_received", event_type=etype, event_id=event["id"])
+
+    await _dispatch(db, etype, obj)
+    return {"status": "ok", "event": etype}
+
+
+async def _dispatch(db: AsyncSession, etype: str, obj: dict):
+    """Route webhook events to handler functions."""
+    price_tier_map = _build_price_tier_map()
+    customer_id = obj.get("customer")
+    user = await _find_user_by_customer(db, customer_id) if customer_id else None
+
+    if etype == "checkout.session.completed":
+        await _on_checkout_completed(db, obj, user)
+
+    elif etype == "customer.subscription.created":
+        await _on_subscription_created(db, obj, user, price_tier_map)
+
+    elif etype == "customer.subscription.updated":
+        await _on_subscription_updated(db, obj, user, price_tier_map)
+
+    elif etype == "customer.subscription.deleted":
+        await _on_subscription_deleted(db, obj, user)
+
+    elif etype == "invoice.payment_succeeded":
+        logger.info("payment_succeeded", customer=customer_id, user_id=str(user.id) if user else None)
+
+    elif etype == "invoice.payment_failed":
+        await _on_payment_failed(db, obj, user)
+
+    else:
+        logger.info("stripe_webhook_unhandled", event_type=etype)
+
+
+async def _on_checkout_completed(db: AsyncSession, obj: dict, user: User | None):
+    if not user:
+        logger.warning("checkout_completed_no_user", customer=obj.get("customer"))
+        return
+
+    sub_id = obj.get("subscription")
+    plan = obj.get("metadata", {}).get("plan_type", "pro")
+    db_tier = "premium" if plan == "pro" else plan
+
+    prefs = dict(user.preferences or {})
+    prefs["stripe_subscription_id"] = sub_id
+    user.preferences = prefs
+    user.tier = db_tier
+    user.subscription_status = "active"
+    await db.commit()
+    logger.info("checkout_completed", user_id=str(user.id), plan=plan, tier=db_tier)
+
+
+async def _on_subscription_created(
+    db: AsyncSession, obj: dict, user: User | None, price_tier_map: dict
+):
+    if not user:
+        return
+    price_id = ""
+    items_data = obj.get("items", {}).get("data", [])
+    if items_data:
+        price_id = items_data[0].get("price", {}).get("id", "")
+
+    db_tier = price_tier_map.get(price_id, "premium")
+    user.tier = db_tier
+    user.subscription_status = obj.get("status", "active")
+
+    prefs = dict(user.preferences or {})
+    prefs["stripe_subscription_id"] = obj.get("id")
+    prefs["stripe_period_end"] = obj.get("current_period_end")
+    user.preferences = prefs
+    await db.commit()
+    logger.info("subscription_created", user_id=str(user.id), tier=db_tier)
+
+
+async def _on_subscription_updated(
+    db: AsyncSession, obj: dict, user: User | None, price_tier_map: dict
+):
+    if not user:
+        return
+    items_data = obj.get("items", {}).get("data", [])
+    price_id = items_data[0].get("price", {}).get("id", "") if items_data else ""
+    db_tier = price_tier_map.get(price_id, user.tier or "premium")
+
+    user.tier = db_tier
+    user.subscription_status = obj.get("status", "active")
+    prefs = dict(user.preferences or {})
+    prefs["stripe_cancel_at_period_end"] = obj.get("cancel_at_period_end", False)
+    prefs["stripe_period_end"] = obj.get("current_period_end")
+    user.preferences = prefs
+    await db.commit()
+    logger.info("subscription_updated", user_id=str(user.id), tier=db_tier,
+                cancel_at_period_end=obj.get("cancel_at_period_end"))
+
+
+async def _on_subscription_deleted(db: AsyncSession, obj: dict, user: User | None):
+    if not user:
+        return
+    user.tier = "free"
+    user.subscription_status = "canceled"
+    prefs = dict(user.preferences or {})
+    prefs.pop("stripe_subscription_id", None)
+    prefs.pop("stripe_cancel_at_period_end", None)
+    user.preferences = prefs
+    await db.commit()
+    logger.info("subscription_deleted", user_id=str(user.id))
+
+
+async def _on_payment_failed(db: AsyncSession, obj: dict, user: User | None):
+    if not user:
+        return
+    user.subscription_status = "past_due"
+    await db.commit()
+    logger.warning("payment_failed", user_id=str(user.id))
 
 
 @router.get("/stripe/test")
-async def test_webhook():
-    """Test endpoint to verify webhook is accessible"""
+async def test_webhook_endpoint():
+    """Health-check: verify the webhook endpoint is reachable."""
     return {
         "status": "webhook endpoint active",
         "webhook_secret_configured": bool(WEBHOOK_SECRET),
-        "test_mode": StripeService.is_test_mode() if hasattr(StripeService, 'is_test_mode') else True
+        "test_mode": (stripe.api_key or "").startswith("sk_test_"),
     }

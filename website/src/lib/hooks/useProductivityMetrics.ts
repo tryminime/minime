@@ -57,22 +57,20 @@ export function useProductivityTrend(days: number = 7) {
     return useQuery({
         queryKey: ['productivity', 'trend', days],
         queryFn: async () => {
-            // Fetch last N days of metrics
-            const promises = [];
-            const today = new Date();
-
-            for (let i = 0; i < days; i++) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - i);
-                const dateStr = date.toISOString().split('T')[0];
-                promises.push(
-                    api.get<ProductivityMetrics>(`/api/v1/analytics/productivity/daily?date=${dateStr}`)
-                        .catch(() => null) // Handle missing data gracefully
+            if (days <= 7) {
+                // The weekly endpoint already returns daily_metrics for the current week
+                const weekly = await api.get<ProductivityWeekly>(
+                    '/api/v1/analytics/productivity/weekly'
                 );
+                // Return daily_metrics sorted chronologically
+                return (weekly.daily_metrics || []);
             }
 
-            const results = await Promise.all(promises);
-            return results.filter(Boolean).reverse(); // Remove nulls and reverse to chronological
+            // For longer ranges, use the daily-range endpoint
+            const result = await api.get<{ metrics: ProductivityMetrics[] }>(
+                `/api/v1/analytics/productivity/daily-range?days=${days}`
+            );
+            return result.metrics || [];
         },
         staleTime: 5 * 60 * 1000,
         retry: 1,

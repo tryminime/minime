@@ -1,0 +1,61 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> >>
+endobj
+4 0 obj
+<< /Length 864 >>
+stream
+BT
+/F1 12 Tf
+72 720 Td
+(Machine Learning in Production) Tj
+0 -18 Td
+72 702 Td
+() Tj
+0 -18 Td
+72 684 Td
+(Machine learning models are increasingly deployed in production environments.) Tj
+0 -18 Td
+72 666 Td
+(Key challenges include model drift, data quality, and latency requirements.) Tj
+0 -18 Td
+72 648 Td
+(MLOps practices help manage the full lifecycle of ML projects.) Tj
+0 -18 Td
+72 630 Td
+(Python frameworks like PyTorch and TensorFlow dominate the landscape.) Tj
+0 -18 Td
+72 612 Td
+(DevOps CI/CD pipelines must adapt for model training and deployment.) Tj
+0 -18 Td
+72 594 Td
+(Feature engineering and preprocessing consume most of data scientists time.) Tj
+0 -18 Td
+72 576 Td
+(Monitoring dashboards track model performance degradation over time.) Tj
+0 -18 Td
+72 558 Td
+(AutoML tools help non-experts build production-quality models efficiently.) Tj
+0 -18 Td
+ET
+
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000290 00000 n
+trailer
+<< /Size 5 /Root 1 0 R >>
+startxref
+1205
+%%EOF

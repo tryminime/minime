@@ -80,7 +80,7 @@ export function useCollaborationNetwork() {
         queryFn: async (): Promise<CollaborationNetwork> => {
             // Build network from entity data — organizations = collaborators
             const entitiesResp = await api.get<{ entities: Array<{ id: string; name: string; entity_type: string; occurrence_count: number }> }>(
-                '/api/v1/entities/entities?limit=30'
+                '/api/v1/entities?limit=30'
             );
             const entities = entitiesResp.entities ?? [];
             const nodes = entities.map(e => ({

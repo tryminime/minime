@@ -8,7 +8,7 @@ from sqlalchemy.sql import func
 from datetime import datetime
 import uuid
 
-from backend.database.postgres import Base
+from database.postgres import Base
 
 
 class User(Base):
@@ -23,6 +23,9 @@ class User(Base):
     # Subscription and tier
     tier = Column(String(50), default="free", nullable=False)  # free, premium, enterprise
     subscription_status = Column(String(50), default="active", nullable=False)
+    
+    # Admin role
+    is_superadmin = Column(Boolean, default=False, nullable=False)
     
     # Profile
     avatar_url = Column(Text, nullable=True)
@@ -43,7 +46,6 @@ class User(Base):
     
     # Indexes
     __table_args__ = (
-        Index('idx_users_email', 'email'),
         Index('idx_users_tier', 'tier'),
     )
     
@@ -55,6 +57,7 @@ class User(Base):
             "full_name": self.full_name,
             "tier": self.tier,
             "subscription_status": self.subscription_status,
+            "is_superadmin": self.is_superadmin,
             "avatar_url": self.avatar_url,
             "bio": self.bio,
             "preferences": self.preferences,
@@ -73,9 +76,11 @@ class Session(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     refresh_token = Column(String(512), nullable=False, unique=True, index=True)
     device_info = Column(JSON, default=dict, nullable=True)
+    device_name = Column(String(255), nullable=True)   # human-readable label, e.g. "Work MacBook"
+    remember_device = Column(Boolean, default=False, nullable=False)  # 90-day vs 7-day token
     ip_address = Column(String(45), nullable=True)  # IPv6 max length
     user_agent = Column(Text, nullable=True)
-    is_revoked = Column(Boolean, default=False, nullable=False)
+    revoked = Column(Boolean, default=False, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
@@ -84,6 +89,7 @@ class Session(Base):
         Index('idx_sessions_user_id', 'user_id'),
         Index('idx_sessions_refresh_token', 'refresh_token'),
     )
+
 
 
 class Activity(Base):
@@ -180,10 +186,11 @@ class Entity(Base):
     entity_metadata = Column('metadata', JSON, nullable=True)
     
     # Timestamps
-    first_seen = Column(DateTime, server_default=func.now(), nullable=True)
-    last_seen = Column(DateTime, server_default=func.now(), nullable=True)
-    created_at = Column(DateTime, server_default=func.now(), nullable=True)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=True)
+    first_seen = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
+    last_seen = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
+    synced_at = Column(DateTime(timezone=True), nullable=True)
     
     # Use extend_existing to avoid conflicts with existing indexes
     __table_args__ = (
@@ -218,6 +225,7 @@ class ActivityEntityLink(Base):
     entity_id = Column(UUID(as_uuid=True), ForeignKey('entities.id', ondelete='CASCADE'), primary_key=True)
     relevance_score = Column(Float, default=1.0, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=True)
+    synced_at = Column(DateTime(timezone=True), nullable=True)
     
     __table_args__ = (
         {'extend_existing': True},
@@ -286,10 +294,109 @@ class UserGoal(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    synced_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         Index('idx_user_goals_user_id', 'user_id'),
         Index('idx_user_goals_status', 'status'),
         {'extend_existing': True},
     )
+
+
+class ContentItem(Base):
+    """Knowledge Base content item — persisted to PostgreSQL."""
+    __tablename__ = "content_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+
+    # Content metadata
+    url = Column(Text, default="")
+    title = Column(String(500), nullable=False)
+    doc_type = Column(String(50), default="webpage")   # webpage, pdf, docx, xlsx, pptx, code
+    full_text = Column(Text, nullable=False)            # stored for RAG re-indexing
+    text_snippet = Column(String(500), default="")
+
+    # NLP analysis results
+    word_count = Column(Integer, default=0)
+    reading_time_seconds = Column(Integer, default=0)
+    keyphrases = Column(JSON, default=list)
+    entities = Column(JSON, default=list)
+    topic = Column(JSON, nullable=True)                 # {"primary": str, "confidence": float}
+    language = Column(String(10), default="en")
+    complexity = Column(Float, default=0.0)
+
+    # Extra metadata
+    content_metadata = Column('metadata', JSON, default=dict)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    synced_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index('idx_content_items_user_id', 'user_id'),
+        Index('idx_content_items_user_created', 'user_id', 'created_at'),
+        Index('idx_content_items_doc_type', 'doc_type'),
+        {'extend_existing': True},
+    )
+
+    def to_dict(self):
+        """Convert to API-compatible dictionary."""
+        return {
+            "id": str(self.id),
+            "user_id": str(self.user_id),
+            "url": self.url or "",
+            "title": self.title,
+            "doc_type": self.doc_type,
+            "full_text": self.full_text,
+            "text_snippet": self.text_snippet or "",
+            "word_count": self.word_count or 0,
+            "reading_time_seconds": self.reading_time_seconds or 0,
+            "keyphrases": self.keyphrases or [],
+            "entities": self.entities or [],
+            "topic": self.topic,
+            "language": self.language or "en",
+            "complexity": self.complexity or 0.0,
+            "metadata": self.content_metadata or {},
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class SyncHistory(Base):
+    """Tracks individual cloud sync runs for a user."""
+    __tablename__ = "sync_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), nullable=False, default="running")  # running, completed, failed
+    trigger = Column(String(20), nullable=False, default="manual")  # manual, scheduled
+    results = Column(JSON, default=dict, nullable=True)  # per-target breakdown
+    error = Column(Text, nullable=True)
+    records_synced = Column(Integer, default=0, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index('idx_sync_history_user_id', 'user_id'),
+        Index('idx_sync_history_started_at', 'started_at'),
+        {'extend_existing': True},
+    )
+
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "user_id": str(self.user_id),
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "status": self.status,
+            "trigger": self.trigger,
+            "results": self.results,
+            "error": self.error,
+            "records_synced": self.records_synced,
+        }
+
 

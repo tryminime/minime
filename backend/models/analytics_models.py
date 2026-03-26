@@ -19,7 +19,7 @@ from datetime import date, datetime
 from typing import Optional, Dict, Any
 import uuid
 
-from backend.database.postgres import Base
+from database.postgres import Base
 
 
 class DailyMetrics(Base):

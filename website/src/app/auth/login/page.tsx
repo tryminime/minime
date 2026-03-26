@@ -2,21 +2,26 @@
 
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Github, Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Github, Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, Home, WifiOff } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useNetworkStatus } from '@/lib/hooks/useNetworkStatus';
 import { useEffect, useState } from 'react';
 
 type AuthTab = 'login' | 'register';
 
 export default function LoginPage() {
     const { loginWithEmail, register, isAuthenticated } = useAuth();
+    const { isOffline } = useNetworkStatus();
     const router = useRouter();
 
     const [activeTab, setActiveTab] = useState<AuthTab>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
+    const [rememberDevice, setRememberDevice] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -36,7 +41,7 @@ export default function LoginPage() {
 
         try {
             if (activeTab === 'login') {
-                await loginWithEmail(email, password);
+                await loginWithEmail(email, password, rememberDevice);
             } else {
                 await register(email, password, fullName || undefined);
                 setSuccess('Account created! Redirecting...');
@@ -56,134 +61,117 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center" style={{
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #312e81 70%, #1e40af 100%)',
-        }}>
-            {/* Decorative elements */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full opacity-10"
-                    style={{ background: 'radial-gradient(circle, #818cf8, transparent)' }} />
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-10"
-                    style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
+        <div className="min-h-screen flex items-center justify-center bg-bg-base relative overflow-hidden">
+            {/* Nav Handle */}
+            <div className="absolute top-6 left-6 right-6 z-50 flex justify-between items-center">
+                <Link href="/" className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors text-sm font-medium bg-elevated px-4 py-2 rounded-full border border-border shadow-sm">
+                    <Home className="w-4 h-4" /> Back to Home
+                </Link>
+                <ThemeToggle />
             </div>
 
-            <div className="relative w-full max-w-md mx-4">
+            {/* Decorative elements conforming to Design System */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-[120px]" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 dark:bg-purple-500/20 rounded-full blur-[120px]" />
+            </div>
+
+            <div className="relative w-full max-w-[420px] mx-4 z-10">
                 {/* Card */}
-                <div style={{
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(99, 102, 241, 0.2)',
-                    borderRadius: '20px',
-                    padding: '40px',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 60px -15px rgba(99, 102, 241, 0.15)',
-                }}>
-                    {/* Logo */}
+                <div className="bg-white/5 dark:bg-[#0d0d1f]/80 backdrop-blur-3xl border border-border/50 rounded-3xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+
+                    {/* Logo & Header */}
                     <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-                            style={{
-                                background: 'rgba(99, 102, 241, 0.08)',
-                                border: '1px solid rgba(99, 102, 241, 0.2)',
-                                boxShadow: '0 8px 24px -4px rgba(99, 102, 241, 0.3)',
-                            }}>
+                        <Link href="/" className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 bg-elevated/50 border border-border/50 shadow-soft group hover:border-indigo-500/30 transition-colors">
                             <Image
                                 src="/icon.png"
                                 alt="MiniMe"
-                                width={44}
-                                height={44}
-                                className="rounded-lg"
+                                width={40}
+                                height={40}
+                                className="rounded-xl group-hover:scale-105 transition-transform"
                                 priority
                             />
-                        </div>
-                        <h1 className="text-2xl font-bold text-white tracking-tight">MiniMe</h1>
-                        <p className="text-sm mt-1" style={{ color: 'rgba(148, 163, 184, 0.8)' }}>
-                            Intelligence From Action
+                        </Link>
+                        <h1 className="text-2xl font-display font-bold text-text-primary tracking-tight">Welcome to MiniMe</h1>
+                        <p className="text-sm mt-2 text-text-secondary">
+                            Intelligence from action
                         </p>
                     </div>
 
-
                     {/* Tab Switcher */}
-                    <div className="flex mb-6 p-1 rounded-xl" style={{ background: 'rgba(30, 41, 59, 0.6)' }}>
+                    <div className="flex mb-8 p-1 rounded-xl bg-elevated border border-border/50 relative">
+                        <div
+                            className="absolute inset-y-1 w-[calc(50%-4px)] bg-bg-base rounded-lg border border-border/50 shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                            style={{ transform: activeTab === 'register' ? 'translateX(calc(100% + 2px))' : 'translateX(2px)' }}
+                        />
                         <button
                             type="button"
                             onClick={() => switchTab('login')}
-                            className="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
-                            style={{
-                                background: activeTab === 'login' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                                color: activeTab === 'login' ? '#a5b4fc' : 'rgba(148, 163, 184, 0.6)',
-                                border: activeTab === 'login' ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
-                            }}
+                            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors relative z-10 \${activeTab === 'login' ? 'text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}
                         >
                             Sign In
                         </button>
                         <button
                             type="button"
                             onClick={() => switchTab('register')}
-                            className="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
-                            style={{
-                                background: activeTab === 'register' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                                color: activeTab === 'register' ? '#a5b4fc' : 'rgba(148, 163, 184, 0.6)',
-                                border: activeTab === 'register' ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
-                            }}
+                            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors relative z-10 \${activeTab === 'register' ? 'text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}
                         >
                             Create Account
                         </button>
                     </div>
 
+                    {/* Offline warning */}
+                    {isOffline && (
+                        <div className="mb-6 p-4 rounded-xl text-sm bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 flex items-start gap-3">
+                            <WifiOff className="w-4 h-4 mt-0.5 shrink-0" />
+                            <div>
+                                <p className="font-semibold mb-0.5">Internet required to sign in</p>
+                                <p className="text-xs opacity-80">First-time login requires an internet connection to verify your account. Once logged in, MiniMe works fully offline.</p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Error/Success Messages */}
                     {error && (
-                        <div className="mb-4 p-3 rounded-xl text-sm" style={{
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                            color: '#fca5a5',
-                        }}>
+                        <div className="mb-6 p-4 rounded-xl text-sm bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400">
                             {error}
                         </div>
                     )}
                     {success && (
-                        <div className="mb-4 p-3 rounded-xl text-sm" style={{
-                            background: 'rgba(34, 197, 94, 0.1)',
-                            border: '1px solid rgba(34, 197, 94, 0.2)',
-                            color: '#86efac',
-                        }}>
+                        <div className="mb-6 p-4 rounded-xl text-sm bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400">
                             {success}
                         </div>
                     )}
 
                     {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4 shadow-none">
                         {/* Full Name (register only) */}
                         {activeTab === 'register' && (
-                            <div>
-                                <label className="block text-xs font-medium mb-1.5" style={{ color: 'rgba(148, 163, 184, 0.8)' }}>
+                            <div className="animate-fade-in group space-y-1.5 mt-[-8px]">
+                                <label className="block text-xs font-semibold text-text-muted group-focus-within:text-text-primary transition-colors">
                                     Full Name
                                 </label>
                                 <div className="relative">
-                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(148, 163, 184, 0.5)' }} />
+                                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                                     <input
                                         id="fullName"
                                         type="text"
                                         placeholder="John Doe"
                                         value={fullName}
                                         onChange={(e) => setFullName(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none transition-all duration-200"
-                                        style={{
-                                            background: 'rgba(30, 41, 59, 0.5)',
-                                            border: '1px solid rgba(99, 102, 241, 0.15)',
-                                        }}
-                                        onFocus={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)'}
-                                        onBlur={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.15)'}
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl text-sm bg-elevated/50 text-text-primary placeholder:text-text-muted/50 border border-border/50 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 focus:outline-none transition-all shadow-inner"
                                     />
                                 </div>
                             </div>
                         )}
 
                         {/* Email */}
-                        <div>
-                            <label className="block text-xs font-medium mb-1.5" style={{ color: 'rgba(148, 163, 184, 0.8)' }}>
+                        <div className="group space-y-1.5">
+                            <label className="block text-xs font-semibold text-text-muted group-focus-within:text-text-primary transition-colors">
                                 Email
                             </label>
                             <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(148, 163, 184, 0.5)' }} />
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                                 <input
                                     id="email"
                                     type="email"
@@ -191,69 +179,70 @@ export default function LoginPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none transition-all duration-200"
-                                    style={{
-                                        background: 'rgba(30, 41, 59, 0.5)',
-                                        border: '1px solid rgba(99, 102, 241, 0.15)',
-                                    }}
-                                    onFocus={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)'}
-                                    onBlur={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.15)'}
+                                    className="w-full pl-10 pr-4 py-3 rounded-xl text-sm bg-elevated/50 text-text-primary placeholder:text-text-muted/50 border border-border/50 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 focus:outline-none transition-all shadow-inner"
                                 />
                             </div>
                         </div>
 
                         {/* Password */}
-                        <div>
-                            <label className="block text-xs font-medium mb-1.5" style={{ color: 'rgba(148, 163, 184, 0.8)' }}>
+                        <div className="group space-y-1.5">
+                            <label className="block text-xs font-semibold text-text-muted group-focus-within:text-text-primary transition-colors">
                                 Password
                             </label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(148, 163, 184, 0.5)' }} />
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                                 <input
                                     id="password"
                                     type={showPassword ? 'text' : 'password'}
-                                    placeholder={activeTab === 'register' ? 'Min 8 chars, upper, lower, digit, special' : '••••••••'}
+                                    placeholder={activeTab === 'register' ? 'Min 8 chars, mixed, special' : '••••••••'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     minLength={activeTab === 'register' ? 8 : 1}
-                                    className="w-full pl-10 pr-12 py-3 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none transition-all duration-200"
-                                    style={{
-                                        background: 'rgba(30, 41, 59, 0.5)',
-                                        border: '1px solid rgba(99, 102, 241, 0.15)',
-                                    }}
-                                    onFocus={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)'}
-                                    onBlur={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.15)'}
+                                    className="w-full pl-10 pr-12 py-3 rounded-xl text-sm bg-elevated/50 text-text-primary placeholder:text-text-muted/50 border border-border/50 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 focus:outline-none transition-all shadow-inner"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                                    style={{ color: 'rgba(148, 163, 184, 0.5)' }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-text-muted hover:bg-bg-base hover:text-text-primary transition-colors"
                                     tabIndex={-1}
                                 >
                                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
-                            {activeTab === 'register' && (
-                                <p className="text-xs mt-1.5" style={{ color: 'rgba(148, 163, 184, 0.5)' }}>
-                                    Must include uppercase, lowercase, number, and special character
-                                </p>
-                            )}
                         </div>
 
-                        {/* Submit Button */}
+                        {/* Remember this device (login only) */}
+                        {activeTab === 'login' && (
+                            <div className="flex items-center justify-between pt-1">
+                                <label className="flex items-center gap-2.5 cursor-pointer group" htmlFor="remember-device">
+                                    <div className="relative">
+                                        <input
+                                            id="remember-device"
+                                            type="checkbox"
+                                            checked={rememberDevice}
+                                            onChange={(e) => setRememberDevice(e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-4 h-4 rounded border border-border/60 bg-elevated/50 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all flex items-center justify-center">
+                                            {rememberDevice && (
+                                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 10">
+                                                    <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                </svg>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <span className="text-xs text-text-muted group-hover:text-text-secondary transition-colors select-none">
+                                        Remember this device <span className="text-text-muted/60">(90 days)</span>
+                                    </span>
+                                </label>
+                            </div>
+                        )}
                         <button
                             id="auth-submit"
                             type="submit"
-                            disabled={isSubmitting || !email || !password}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{
-                                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                                boxShadow: isSubmitting ? 'none' : '0 4px 14px -3px rgba(99, 102, 241, 0.4)',
-                            }}
-                            onMouseOver={(e) => { if (!isSubmitting) e.currentTarget.style.boxShadow = '0 6px 20px -3px rgba(99, 102, 241, 0.6)'; }}
-                            onMouseOut={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px -3px rgba(99, 102, 241, 0.4)'; }}
+                            disabled={isSubmitting || !email || !password || (activeTab === 'login' && isOffline)}
+                            className="w-full flex items-center justify-center gap-2 mt-6 py-3.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-[0_4px_14px_0_rgba(99,102,241,0.2)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -267,16 +256,13 @@ export default function LoginPage() {
                     </form>
 
                     {/* Divider */}
-                    <div className="relative my-6">
+                    <div className="relative mt-8 mb-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full" style={{ borderTop: '1px solid rgba(99, 102, 241, 0.15)' }} />
+                            <div className="w-full border-t border-border/60" />
                         </div>
                         <div className="relative flex justify-center">
-                            <span className="px-3 text-xs" style={{
-                                background: 'rgba(15, 23, 42, 0.8)',
-                                color: 'rgba(148, 163, 184, 0.5)',
-                            }}>
-                                or continue with
+                            <span className="px-4 text-xs font-medium text-text-muted bg-bg-base border border-border/30 rounded-full py-0.5">
+                                OR CONTINUE WITH
                             </span>
                         </div>
                     </div>
@@ -284,29 +270,15 @@ export default function LoginPage() {
                     {/* OAuth Buttons */}
                     <div className="grid grid-cols-2 gap-3">
                         <button
-                            onClick={() => { /* OAuth: login('github') */ }}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
-                            style={{
-                                background: 'rgba(30, 41, 59, 0.5)',
-                                border: '1px solid rgba(99, 102, 241, 0.15)',
-                                color: 'rgba(203, 213, 225, 0.8)',
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)'}
-                            onMouseOut={(e) => e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.15)'}
+                            onClick={() => { /* OAuth: github */ }}
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-surface border border-border rounded-xl text-sm font-semibold text-text-primary hover:bg-elevated hover:border-border/80 transition-all shadow-sm active:scale-[0.98]"
                         >
                             <Github className="w-4 h-4" />
                             GitHub
                         </button>
                         <button
-                            onClick={() => { /* OAuth: login('google') */ }}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
-                            style={{
-                                background: 'rgba(30, 41, 59, 0.5)',
-                                border: '1px solid rgba(99, 102, 241, 0.15)',
-                                color: 'rgba(203, 213, 225, 0.8)',
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)'}
-                            onMouseOut={(e) => e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.15)'}
+                            onClick={() => { /* OAuth: google */ }}
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-surface border border-border rounded-xl text-sm font-semibold text-text-primary hover:bg-elevated hover:border-border/80 transition-all shadow-sm active:scale-[0.98]"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -318,14 +290,12 @@ export default function LoginPage() {
                         </button>
                     </div>
 
-                    {/* Footer */}
-                    <div className="mt-6 text-center">
-                        <p className="text-xs" style={{ color: 'rgba(148, 163, 184, 0.4)' }}>
-                            By continuing, you agree to our{' '}
-                            <a href="/legal/terms" className="underline hover:text-indigo-400 transition-colors">Terms</a>{' '}
-                            and{' '}
-                            <a href="/legal/privacy" className="underline hover:text-indigo-400 transition-colors">Privacy Policy</a>
-                        </p>
+                    {/* Footer Policy */}
+                    <div className="mt-8 text-center text-xs text-text-muted">
+                        By continuing, you agree to our{' '}
+                        <a href="/legal/terms" className="text-text-primary hover:text-indigo-500 transition-colors font-medium">Terms</a>
+                        {' '}and{' '}
+                        <a href="/legal/privacy" className="text-text-primary hover:text-indigo-500 transition-colors font-medium">Privacy Policy</a>
                     </div>
                 </div>
             </div>

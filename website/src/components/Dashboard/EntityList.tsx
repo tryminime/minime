@@ -37,6 +37,20 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
     unknown: Tag,
 };
 
+// org_type display labels and colors
+const ORG_TYPE_COLORS: Record<string, string> = {
+    company:          'bg-amber-100 text-amber-700',
+    educational:      'bg-blue-100 text-blue-700',
+    government:       'bg-red-100 text-red-700',
+    open_source:      'bg-green-100 text-green-700',
+    media:            'bg-pink-100 text-pink-700',
+    cloud:            'bg-sky-100 text-sky-700',
+    developer_tools:  'bg-violet-100 text-violet-700',
+    social_media:     'bg-orange-100 text-orange-700',
+    community:        'bg-teal-100 text-teal-700',
+    productivity:     'bg-indigo-100 text-indigo-700',
+};
+
 interface EntityListProps {
     onSelectEntity?: (entity: EntityItem) => void;
     selectedEntityId?: string | null;
@@ -154,7 +168,7 @@ export function EntityList({ onSelectEntity, selectedEntityId }: EntityListProps
                                 <Icon className="w-4 h-4" />
                             </div>
 
-                            {/* Name + aliases */}
+                        {/* Name + aliases + org badges */}
                             <div className="flex-1 min-w-0">
                                 <p className="font-medium text-gray-900 truncate">
                                     {entity.canonical_name}
@@ -163,6 +177,21 @@ export function EntityList({ onSelectEntity, selectedEntityId }: EntityListProps
                                     <p className="text-xs text-gray-400 truncate mt-0.5">
                                         {entity.aliases.slice(0, 3).join(' · ')}
                                     </p>
+                                )}
+                                {/* Org type + industry badges */}
+                                {entity.entity_type === 'organization' && (entity.org_type || entity.industry) && (
+                                    <div className="flex gap-1 mt-1 flex-wrap">
+                                        {entity.org_type && (
+                                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${ORG_TYPE_COLORS[entity.org_type] ?? 'bg-gray-100 text-gray-500'}`}>
+                                                {entity.org_type.replace(/_/g, ' ')}
+                                            </span>
+                                        )}
+                                        {entity.industry && (
+                                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                                                {entity.industry}
+                                            </span>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 

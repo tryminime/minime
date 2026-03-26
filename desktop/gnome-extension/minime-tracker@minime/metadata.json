@@ -1,0 +1,12 @@
+{
+    "name": "MiniMe Activity Tracker",
+    "description": "Exposes the currently focused window via D-Bus for MiniMe activity tracking",
+    "uuid": "minime-tracker@minime",
+    "shell-version": [
+        "45",
+        "46",
+        "47"
+    ],
+    "version": 1,
+    "url": "https://tryminime.com"
+}

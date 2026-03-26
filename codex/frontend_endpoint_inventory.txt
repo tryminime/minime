@@ -1,0 +1,201 @@
+extension-chrome/options/settings.html:289:                        <input type="url" id="apiUrl" value="http://localhost:8000"
+extension-chrome/options/settings.html:548:                        <span class="val" id="aboutApiUrl">http://localhost:8000</span>
+extension-chrome/options/settings.js:96:        document.getElementById('apiUrl').value = settings.apiUrl || 'http://localhost:8000';
+extension-chrome/options/settings.js:118:        testApiConnection(settings.apiUrl || 'http://localhost:8000');
+extension-chrome/options/settings.js:149:        const api = s.apiUrl || 'http://localhost:8000';
+extension-chrome/options/settings.js:320:            apiUrl: 'http://localhost:8000', dashboardUrl: 'http://localhost:3000/dashboard',
+desktop/src/services/api.ts:4:const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+desktop/src/services/graphAPI.ts:8:const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+extension-chrome/lib/sync.js:5:    static API_URL = 'http://localhost:8000';
+desktop/src/services/chatAPI.ts:95:            return await this.client.post<ChatResponse>('/api/ai/chat', request);
+desktop/src/services/chatAPI.ts:117:            return await this.client.get('/api/ai/conversations');
+desktop/src/services/chatAPI.ts:128:            return await this.client.get<FocusScore>('/api/ai/analytics/focus-score');
+desktop/src/services/chatAPI.ts:139:            return await this.client.get<WellnessScore>('/api/ai/analytics/wellness');
+desktop/src/services/chatAPI.ts:150:            return await this.client.post<WeeklyReport>('/api/ai/reports/weekly');
+desktop/src/services/entityAPI.ts:7:const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+desktop/src/services/analyticsAPI.ts:9:const API_PREFIX = '/api/v1/analytics';
+desktop/src/services/integrationAPI.ts:61:                '/api/integrations/github/oauth/initiate'
+desktop/src/services/integrationAPI.ts:72:                '/api/integrations/github/oauth/callback',
+desktop/src/services/integrationAPI.ts:83:            await this.client.delete('/api/integrations/github/disconnect');
+desktop/src/services/integrationAPI.ts:92:                '/api/integrations/github/status'
+desktop/src/services/integrationAPI.ts:103:                '/api/integrations/github/repos'
+desktop/src/services/integrationAPI.ts:113:            await this.client.post('/api/integrations/github/repos/track', {
+desktop/src/services/integrationAPI.ts:135:                '/api/integrations/google/oauth/initiate'
+desktop/src/services/integrationAPI.ts:146:                '/api/integrations/google/oauth/callback',
+desktop/src/services/integrationAPI.ts:157:            await this.client.delete('/api/integrations/google/disconnect');
+desktop/src/services/integrationAPI.ts:166:                '/api/integrations/google/status'
+desktop/src/services/integrationAPI.ts:177:                '/api/integrations/google/calendars'
+desktop/src/services/integrationAPI.ts:191:                '/api/integrations/notion/oauth/initiate'
+desktop/src/services/integrationAPI.ts:202:                '/api/integrations/notion/oauth/callback',
+desktop/src/services/integrationAPI.ts:213:            await this.client.delete('/api/integrations/notion/disconnect');
+desktop/src/services/integrationAPI.ts:222:                '/api/integrations/notion/status'
+desktop/src/services/integrationAPI.ts:233:                '/api/integrations/notion/databases'
+extension-chrome/TESTING_GUIDE.md:19:curl http://localhost:8000/health
+extension-chrome/TESTING_GUIDE.md:72:  http://localhost:8000/v1/activities/stats
+extension-chrome/TESTING_GUIDE.md:341:  http://localhost:8000/v1/activities/stats
+extension-chrome/TESTING_GUIDE.md:345:  "http://localhost:8000/v1/activities?limit=10"
+extension-chrome/lib/activity-queue.js:39:            apiBaseUrl: config.apiBaseUrl || 'http://localhost:8000',
+desktop/src/services/settingsAPI.ts:29:            const settings = await this.client.get<Settings>('/api/settings');
+desktop/src/services/settingsAPI.ts:42:            await this.client.put('/api/settings/profile', profile);
+desktop/src/services/settingsAPI.ts:53:            await this.client.put('/api/settings/tracking', tracking);
+desktop/src/services/settingsAPI.ts:64:            await this.client.put('/api/settings/focus', focus);
+desktop/src/services/settingsAPI.ts:75:            await this.client.put('/api/settings/privacy', privacy);
+desktop/src/services/settingsAPI.ts:86:            await this.client.put('/api/settings/notifications', notifications);
+desktop/src/services/settingsAPI.ts:97:            await this.client.post('/api/settings/auth/change-password', {
+desktop/src/services/settingsAPI.ts:111:            return await this.client.post('/api/settings/auth/2fa/enable');
+desktop/src/services/settingsAPI.ts:122:            await this.client.post('/api/settings/auth/2fa/disable', { code });
+desktop/src/services/settingsAPI.ts:133:            return await this.client.post('/api/settings/backups/create');
+desktop/src/services/settingsAPI.ts:144:            const response = await this.client.get<{ backups: Array<any> }>('/api/settings/backups');
+extension-chrome/manifest.json:15:        "http://localhost:8000/*",
+desktop/src/services/auth.ts:13:const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+desktop/src/services/auth.ts:34:            await api.get('/api/v1/auth/me');
+desktop/src/services/auth.ts:45:        const loginResponse = await rawPost<AuthResponse>('/api/v1/auth/login', {
+desktop/src/services/auth.ts:59:        const registerResponse = await rawPost<AuthResponse>('/api/v1/auth/register', {
+extension-chrome/lib/history-sync.js:226:        return settings.settings?.backendUrl || 'http://localhost:8000';
+extension-chrome/README.md:68:Extension syncs to backend at: `http://localhost:8000/api/v1/activities/batch`
+desktop/src/lib/hooks/useApi.ts:124:            return await api.get('/api/v1/entities/entities?limit=50')
+desktop/src/lib/hooks/useApi.ts:135:            return await api.get('/api/v1/activities/?limit=20')
+desktop/src/lib/hooks/useApi.ts:146:            return await api.get('/api/v1/activities/?limit=10')
+desktop/src/lib/hooks/useApi.ts:157:            return await api.get('/api/v1/entities/entities?limit=20')
+desktop/src/lib/hooks/useApi.ts:168:            return api.post('/api/v1/activities/sync')
+desktop/src/lib/hooks/useApi.ts:182:            return api.post('/api/v1/activities/sync')
+desktop/src/pages/Knowledge.tsx:36:const API_BASE = 'http://localhost:8000';
+extension-chrome/examples/queue-integration-example.js:34:        apiBaseUrl: 'http://localhost:8000',
+desktop/src/pages/Chat.tsx:159:                ? 'Please check that the backend is running on http://localhost:8000'
+website/src/lib/api.ts:4:const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+website/src/lib/auth.ts:76:    private readonly API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+website/src/lib/auth.ts:89:        const response = await api.post<AuthTokens>('/api/v1/auth/login', {
+website/src/lib/auth.ts:165:        const response = await api.post<AuthTokens>('/api/v1/auth/register', {
+website/src/lib/auth.ts:207:        const tokenResponse = await api.post<AuthTokens>('/api/v1/auth/oauth-exchange', {
+website/src/lib/auth.ts:227:        const user = await api.get<AuthUser>('/api/v1/auth/me');
+website/src/lib/auth.ts:262:            return api.post<{ valid: boolean; user_id: string }>('/api/v1/auth/verify-local');
+website/src/lib/auth.ts:285:        const response = await api.get<{ devices: TrustedDevice[] }>('/api/v1/auth/devices');
+website/src/lib/auth.ts:303:            await api.post('/api/v1/auth/logout');
+website/src/lib/auth.ts:366:            const response = await api.post<AuthTokens>('/api/v1/auth/refresh', { refresh_token: refreshToken });
+desktop/src/components/AIChatAssistant.tsx:71:            const response = await api.post<{ response?: string; message?: string }>('/api/ai/chat', {
+extension-chrome/QUEUE_README.md:71:        apiBaseUrl: 'http://localhost:8000',
+website/src/components/ChatPopup.tsx:125:            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+website/src/components/FooterNewsletter.tsx:15:            const res = await fetch('/api/waitlist', {
+website/src/components/FeaturePanels.tsx:23:                const res = await api.get<any>('/api/v1/analytics/productivity/forecast');
+website/src/components/FeaturePanels.tsx:109:                const res = await api.get<any>('/api/v1/analytics/intelligence/communities');
+website/src/components/FeaturePanels.tsx:253:            const res = await api.get<any>('/api/v1/ai/plugins');
+website/src/components/FeaturePanels.tsx:271:            await api.post('/api/v1/ai/plugins', {
+website/src/components/FeaturePanels.tsx:354:            const res = await api.get<any>('/api/v1/analytics/entities/types');
+website/src/components/FeaturePanels.tsx:365:            await api.post('/api/v1/analytics/entities/types', { name: newName, color: newColor, icon: newIcon });
+website/src/lib/hooks/useGoals.ts:46:        queryFn: () => api.get<Goal[]>('/api/v1/analytics/goals'),
+website/src/lib/hooks/useGoals.ts:56:        mutationFn: (data: GoalCreate) => api.post<Goal>('/api/v1/analytics/goals', data),
+website/src/lib/hooks/useGoals.ts:84:        queryFn: () => api.get<WellnessData>('/api/v1/analytics/wellness'),
+website/src/lib/hooks/useGoals.ts:94:        queryFn: () => api.get<CareerData>('/api/v1/analytics/career'),
+extension-chrome/background/service-worker.js:22:        apiBaseUrl: 'http://localhost:8000/api',
+extension-chrome/background/service-worker.js:501:        return (apiUrl || 'http://localhost:8000').replace(/\/$/, '');
+extension-chrome/background/service-worker.js:503:        return 'http://localhost:8000';
+website/src/lib/hooks/useWeeklySummary.ts:35:                : '/api/v1/analytics/summary/weekly';
+website/src/lib/hooks/useWeeklySummary.ts:80:    await api.post('/api/v1/analytics/summary/weekly/email', { date });
+website/src/lib/hooks/useAdmin.ts:72:        queryFn: () => api.get('/api/v1/admin/stats/overview'),
+website/src/lib/hooks/useAdmin.ts:107:        queryFn: () => api.get('/api/v1/admin/subscriptions'),
+website/src/lib/hooks/useAdmin.ts:116:        queryFn: () => api.get('/api/v1/admin/regions'),
+website/src/lib/hooks/useAdmin.ts:125:        queryFn: () => api.get('/api/v1/admin/tokens'),
+website/src/lib/hooks/useAdmin.ts:134:        queryFn: () => api.get('/api/v1/admin/system/health'),
+website/src/lib/hooks/useActivities.ts:91:            api.post('/api/v1/activities/bulk-delete', { activity_ids: activityIds }),
+website/src/lib/hooks/useEntities.ts:178:            api.post<EntityItem>('/api/v1/entities/merge', {
+website/src/lib/hooks/useEntities.ts:196:                '/api/v1/entities/stats'
+website/src/lib/hooks/useEntities.ts:259:        queryFn: () => api.get<DedupScanResult>('/api/v1/entities/dedup-scan'),
+website/src/lib/hooks/useEntities.ts:279:            api.post('/api/v1/entities/dedup-merge-cluster', {
+website/src/lib/hooks/useEntities.ts:378:        queryFn: () => api.get<ExpertiseProfile>('/api/v1/graph/intelligence/expertise'),
+website/src/lib/hooks/useEntities.ts:389:        queryFn: () => api.get<LearningPathsResult>('/api/v1/graph/intelligence/learning-paths'),
+website/src/lib/hooks/useEntities.ts:400:        queryFn: () => api.get<CollaborationResult>('/api/v1/graph/intelligence/collaboration'),
+website/src/lib/hooks/useEntities.ts:411:        queryFn: () => api.get<CrossDomainResult>('/api/v1/graph/intelligence/cross-domain'),
+website/src/lib/hooks/useEntities.ts:422:        queryFn: () => api.get<PageRankResult>('/api/v1/graph/intelligence/pagerank'),
+website/src/lib/hooks/useProductivityMetrics.ts:35:                : '/api/v1/analytics/productivity/daily';
+website/src/lib/hooks/useProductivityMetrics.ts:48:        queryFn: () => api.get<ProductivityWeekly>('/api/v1/analytics/productivity/weekly'),
+website/src/lib/hooks/useProductivityMetrics.ts:63:                    '/api/v1/analytics/productivity/weekly'
+website/src/lib/hooks/useLocalBackend.ts:13:const LOCAL_API = 'http://localhost:8000';
+website/src/lib/hooks/useMeetings.ts:55:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities?type=meeting&limit=200').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useMeetings.ts:56:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities?type=web_visit&limit=500').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useReadingAnalytics.ts:246:                    api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=reading_analytics&limit=500').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useReadingAnalytics.ts:247:                    api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=web_visit&limit=500').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useReadingAnalytics.ts:248:                    api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=app_focus&limit=500').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useReadingAnalytics.ts:249:                    api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=page_view&limit=500').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useExport.ts:15:const BASE = '/api/v1/export';
+website/src/lib/hooks/useExport.ts:22:            const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${BASE}/download`;
+website/src/lib/hooks/useExport.ts:75:            const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${BASE}/upload`;
+website/src/lib/hooks/useWearables.ts:42:                return await api.get<WearableProvider[]>('/api/v1/wearables/status');
+website/src/lib/hooks/useScreenshots.ts:56:        mutationFn: () => api.delete('/api/v1/screenshots'),
+website/src/lib/hooks/useCollaborationMetrics.ts:67:            const raw = await api.get<RawCollaboration>('/api/v1/analytics/collaboration');
+website/src/lib/hooks/useCollaborationMetrics.ts:83:                '/api/v1/entities?limit=30'
+website/src/lib/hooks/useCloudSyncSchedule.ts:17:const BASE = '/api/v1/sync';
+website/src/lib/hooks/useSkillsMetrics.ts:39:        queryFn: () => api.get<SkillMetrics>('/api/v1/analytics/skills'),
+website/src/lib/hooks/useSkillsMetrics.ts:53:                : '/api/v1/analytics/skills/growth';
+website/src/lib/hooks/useSocialMedia.ts:43:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=social_media&limit=500').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useSocialMedia.ts:44:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=web_visit&limit=500').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useSocialMedia.ts:45:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=page_view&limit=500').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useGraphData.ts:47:        queryFn: () => api.get<GraphData>('/api/v1/graph/visualization'),
+website/src/lib/hooks/useCloudSync.ts:20:const BASE = '/api/v1/sync';
+website/src/lib/hooks/useCloudSync.ts:71:                const redirectUri = encodeURIComponent('http://localhost:8000/api/v1/sync/gdrive/callback');
+website/src/lib/hooks/useBilling.ts:71:        queryFn: () => api.get<Subscription>('/api/v1/billing/subscription'),
+website/src/lib/hooks/useBilling.ts:82:        queryFn: () => api.get<UsageMetrics>('/api/v1/billing/usage'),
+website/src/lib/hooks/useBilling.ts:93:        queryFn: () => api.get<{ invoices: Invoice[] }>('/api/v1/billing/invoices'),
+website/src/lib/hooks/useBilling.ts:104:        queryFn: () => api.get<{ plans: Record<string, PricingPlan> }>('/api/v1/billing/plans'),
+website/src/lib/hooks/useBilling.ts:121:                '/api/v1/billing/checkout',
+website/src/lib/hooks/useBilling.ts:141:            return api.post('/api/v1/billing/subscription/cancel', { at_period_end: atPeriodEnd });
+website/src/lib/hooks/useBilling.ts:159:            return api.post('/api/v1/billing/subscription/update', { new_plan_type: newPlanType });
+website/src/lib/hooks/useBilling.ts:177:            return api.post<{ portal_url: string }>('/api/v1/billing/portal', { return_url: returnUrl });
+website/src/lib/hooks/useFocusSessions.ts:39:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=window_focus&limit=200').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useFocusSessions.ts:40:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=app_focus&limit=200').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useFocusSessions.ts:41:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=web_visit&limit=200').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useFocusSessions.ts:42:                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=page_view&limit=200').catch(() => ({ activities: [] })),
+website/src/lib/hooks/useAIChat.ts:151:        queryFn: () => api.get<ModelInfo>('/api/ai/model/info'),
+website/src/lib/hooks/useAIChat.ts:172:        queryFn: () => api.get<AvailableModelsResponse>('/api/ai/models/available'),
+website/src/lib/hooks/useAIChat.ts:184:                '/api/ai/model',
+website/src/lib/hooks/useAIChat.ts:203:        queryFn: () => api.get<FocusScore>('/api/ai/analytics/focus-score'),
+website/src/lib/hooks/useAIChat.ts:213:        queryFn: () => api.get<WellnessScore>('/api/ai/analytics/wellness'),
+website/src/lib/hooks/useAIChat.ts:253:            }>('/api/ai/reports/weekly', {}),
+website/src/lib/hooks/useAIChat.ts:285:                '/api/ai/insights'
+website/src/lib/hooks/useAIChat.ts:319:            }>('/api/ai/milestones'),
+website/src/app/docs/page.tsx:14:                path: '/api/v1/activities/batch',
+website/src/app/docs/page.tsx:36:                path: '/api/v1/activities',
+website/src/app/docs/page.tsx:44:                path: '/api/v1/activities/:id',
+website/src/app/docs/page.tsx:51:                path: '/api/v1/activities/:id',
+website/src/app/docs/page.tsx:66:                path: '/api/v1/graph/nodes',
+website/src/app/docs/page.tsx:74:                path: '/api/v1/graph/edges',
+website/src/app/docs/page.tsx:89:                path: '/api/ai/chat/stream',
+website/src/app/docs/page.tsx:100:                path: '/api/ai/conversations',
+website/src/app/docs/page.tsx:115:                path: '/api/v1/analytics/focus',
+website/src/app/docs/page.tsx:123:                path: '/api/v1/analytics/summary/weekly/email',
+website/src/app/docs/page.tsx:138:                path: '/api/v1/users/me',
+website/src/app/docs/page.tsx:145:                path: '/api/v1/auth/login',
+website/src/app/docs/page.tsx:201:                                <code className="bg-elevated px-2 py-0.5 rounded text-indigo-600 text-sm border border-border/50">http://localhost:8000</code>{' '}
+website/src/app/faq/page.tsx:87:                a: 'Yes. The FastAPI backend runs at http://localhost:8000 and exposes a full REST API. Both Free and Pro plans include access. You can query your activity history, knowledge graph, and analytics programmatically — pipe data into Obsidian, Notion, or any other tool via HTTP.'
+website/src/app/waitlist/page.tsx:25:            const response = await fetch('http://localhost:8000/api/v1/waitlist', {
+website/src/app/auth/admin/page.tsx:25:            const response = await api.post<{ access_token: string; refresh_token: string }>('/api/v1/auth/login', {
+website/src/app/dashboard/productivity/page.tsx:197:        queryFn: () => api.get('/api/v1/analytics/productivity/deep-work-sessions?days=7'),
+website/src/app/dashboard/productivity/page.tsx:313:        queryFn: () => api.get('/api/v1/analytics/productivity/context-switch-timeline?days=7'),
+website/src/app/dashboard/productivity/page.tsx:428:        queryFn: () => api.get('/api/v1/analytics/productivity/break-patterns?days=7'),
+website/src/app/dashboard/productivity/page.tsx:542:        queryFn: () => api.get('/api/v1/analytics/productivity/break-classification?days=7'),
+website/src/app/dashboard/productivity/page.tsx:659:        queryFn: () => api.get('/api/v1/analytics/productivity/focus-periods?days=7'),
+website/src/app/dashboard/productivity/page.tsx:759:        queryFn: () => api.get('/api/v1/analytics/screenshots/meta?days=7&limit=50'),
+website/src/app/dashboard/productivity/page.tsx:821:        queryFn: () => api.get<ProdMetrics>('/api/v1/analytics/productivity'),
+website/src/app/dashboard/productivity/page.tsx:827:        queryFn: () => api.get('/api/v1/analytics/productivity/daily-range?days=30'),
+website/src/app/dashboard/productivity/page.tsx:838:            const result = await api.get<{ activities: object[]; total: number; format: string }>('/api/v1/analytics/export?format=json');
+website/src/app/dashboard/productivity/page.tsx:876:                            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+website/src/app/dashboard/settings/page.tsx:279:        queryFn: () => api.get<{ full_name: string; email: string; bio?: string; timezone?: string }>('/api/v1/users/me/profile'),
+website/src/app/dashboard/settings/page.tsx:298:        queryFn: () => api.get<{ privacy_settings: Record<string, unknown> }>('/api/v1/users/me/privacy'),
+website/src/app/dashboard/settings/page.tsx:326:        queryFn: () => api.get<{ preferences: Record<string, unknown> }>('/api/v1/users/me/preferences'),
+website/src/app/dashboard/settings/page.tsx:412:            await api.post('/api/v1/users/me/change-password', { current_password: currentPassword, new_password: newPassword });
+website/src/app/dashboard/settings/page.tsx:425:                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/account/export`,
+website/src/app/dashboard/settings/page.tsx:441:            const res = await api.delete<{ deleted_count: number; message: string; breakdown: Record<string, any> }>('/api/v1/users/me/data');
+website/src/app/dashboard/settings/page.tsx:450:            await api.delete('/api/v1/account');
+website/src/app/dashboard/settings/page.tsx:467:        mutationFn: () => api.put('/api/v1/users/me/profile', {
+website/src/app/dashboard/settings/page.tsx:475:        mutationFn: () => api.put('/api/v1/users/me/privacy', {
+website/src/app/dashboard/settings/page.tsx:487:        mutationFn: () => api.put('/api/v1/users/me/preferences', {
+website/src/app/dashboard/settings/page.tsx:968:                '/api/ai/chat',
+website/src/app/dashboard/chat/page.tsx:400:            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+website/src/app/dashboard/knowledge/page.tsx:245:            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/documents/extract`, {
+website/src/app/dashboard/knowledge/page.tsx:323:                const res = await api.get<any>('/api/v1/analytics/knowledge/decay?limit=50');
+website/src/app/dashboard/knowledge/page.tsx:390:                const res = await api.get<any>('/api/v1/analytics/knowledge/clusters');
+website/src/app/dashboard/knowledge/page.tsx:463:            const data = await api.get<{ total_records: number; by_doc_type: Record<string, number> }>('/api/v1/content/stats/summary');
+website/src/app/dashboard/knowledge/page.tsx:517:                const data = await api.post<{ results: SearchResult[] }>('/api/v1/content/search', {
+website/src/app/dashboard/knowledge/page.tsx:546:            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/content/export?format=json`, {
+website/src/app/dashboard/overview/page.tsx:144:        queryFn: () => api.get<DashboardOverview>('/api/v1/analytics/overview'),
+website/src/app/dashboard/overview/page.tsx:151:        queryFn: () => api.get('/api/v1/analytics/productivity/daily-range?days=30'),
+website/src/app/dashboard/overview/page.tsx:166:            const result = await api.get<{ activities: object[]; total: number; format: string }>('/api/v1/analytics/export?format=json');

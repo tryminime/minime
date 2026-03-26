@@ -397,7 +397,7 @@ class EmailService:
 # Helper to get email service instance
 def get_email_service() -> EmailService:
     """Get email service instance with configuration from settings."""
-    from backend.core.config import settings
+    from core.config import settings
     
     # Try SendGrid first
     if hasattr(settings, 'SENDGRID_API_KEY') and settings.SENDGRID_API_KEY:

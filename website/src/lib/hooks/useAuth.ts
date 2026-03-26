@@ -5,20 +5,32 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/authStore';
 import { authService } from '../auth';
 
+// Module-level flag: run initAuth only ONCE per SPA session.
+// Prevents re-triggering on every component mount (layout, dashboard page, etc.)
+let _authInitialized = false;
+
 export function useAuth() {
     const { user, isAuthenticated, isLoading, setUser, setIsLoading } = useAuthStore();
     const router = useRouter();
 
-    // Fetch current user on mount
     useEffect(() => {
+        // Skip if already initialised (e.g. after a successful login + redirect)
+        if (_authInitialized) return;
+        _authInitialized = true;
+
         const initAuth = async () => {
+            setIsLoading(true);
             try {
-                if (authService.isAuthenticated()) {
+                // 1. Valid access token in storage → fetch profile and continue
+                const accessToken = authService.getAccessToken();
+                if (accessToken && !authService.isTokenExpired(accessToken)) {
                     const currentUser = await authService.fetchCurrentUser();
                     setUser(currentUser);
-                } else {
-                    setUser(null);
+                    return;
                 }
+                // 2. No valid access token → try silent refresh with stored refresh token
+                const refreshedUser = await authService.silentRefresh();
+                setUser(refreshedUser ?? null);  // null = not logged in
             } catch (error) {
                 console.error('Auth init error:', error);
                 setUser(null);
@@ -26,15 +38,16 @@ export function useAuth() {
         };
 
         initAuth();
-    }, [setUser]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    // Listen for auth:required event
+    // Listen for auth:required event (e.g. 401 mid-session)
     useEffect(() => {
         const handleAuthRequired = () => {
+            _authInitialized = false; // allow re-init on next login
             setUser(null);
             router.push('/auth/login');
         };
-
         window.addEventListener('auth:required', handleAuthRequired);
         return () => window.removeEventListener('auth:required', handleAuthRequired);
     }, [setUser, router]);
@@ -43,11 +56,12 @@ export function useAuth() {
         authService.initiateOAuth(provider);
     };
 
-    const loginWithEmail = async (email: string, password: string) => {
+    const loginWithEmail = async (email: string, password: string, rememberDevice = false) => {
         setIsLoading(true);
         try {
-            const user = await authService.loginWithEmail(email, password);
-            setUser(user);
+            const user = await authService.loginWithEmail(email, password, rememberDevice);
+            _authInitialized = true; // prevent initAuth from re-running after redirect
+            setUser(user);           // also clears isLoading via store
             router.push('/dashboard/overview');
             return user;
         } catch (error) {
@@ -60,6 +74,7 @@ export function useAuth() {
         setIsLoading(true);
         try {
             const user = await authService.register(email, password, fullName);
+            _authInitialized = true;
             setUser(user);
             router.push('/dashboard/overview');
             return user;
@@ -70,10 +85,15 @@ export function useAuth() {
     };
 
     const logout = async () => {
+        _authInitialized = false; // allow re-init on next login
         await authService.logout();
         setUser(null);
         router.push('/auth/login');
     };
+
+    const listDevices = () => authService.listDevices();
+    const revokeDevice = (sessionId: string) => authService.revokeDevice(sessionId);
+    const isDeviceRemembered = () => authService.isDeviceRemembered();
 
     return {
         user,
@@ -83,5 +103,8 @@ export function useAuth() {
         loginWithEmail,
         register,
         logout,
+        listDevices,
+        revokeDevice,
+        isDeviceRemembered,
     };
 }

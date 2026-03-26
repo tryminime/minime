@@ -6,7 +6,7 @@ Handles connection pooling, session management, and graph client setup.
 from neo4j import GraphDatabase, Session
 from typing import Optional
 import logging
-from backend.config import settings
+from config import settings
 
 logger = logging.getLogger(__name__)
 

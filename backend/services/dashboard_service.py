@@ -22,10 +22,10 @@ import csv
 import io
 import structlog
 
-from backend.services.career_development_service import CareerDevelopmentService
-from backend.services.wellness_metrics_service import WellnessMetricsService
-from backend.services.goal_tracking_service import GoalTrackingService
-from backend.services.productivity_metrics_service import (
+from services.career_development_service import CareerDevelopmentService
+from services.wellness_metrics_service import WellnessMetricsService
+from services.goal_tracking_service import GoalTrackingService
+from services.productivity_metrics_service import (
     get_time_allocation_by_project,
     get_comparative_analytics,
 )

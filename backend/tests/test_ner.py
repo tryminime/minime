@@ -14,8 +14,8 @@ import os
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from backend.services.nlp_service import nlp_service
-from backend.services.entity_normalizer import entity_normalizer
+from services.nlp_service import nlp_service
+from services.entity_normalizer import entity_normalizer
 from uuid import UUID
 
 

@@ -8,7 +8,7 @@ from typing import Dict, Any
 import logging
 from datetime import datetime
 
-from backend.services.community_service import community_service
+from services.community_service import community_service
 
 logger = logging.getLogger(__name__)
 

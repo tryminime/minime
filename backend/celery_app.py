@@ -10,7 +10,7 @@ Configures Celery Beat for scheduled analytics tasks:
 
 from celery import Celery
 from celery.schedules import crontab
-from backend.config.settings import settings
+from config.settings import settings
 
 # Initialize Celery app
 app = Celery('minime')

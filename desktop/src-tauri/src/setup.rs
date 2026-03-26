@@ -1,8 +1,11 @@
+#[allow(unused_imports)]
 use tauri::State;
 use std::process::Command;
 use std::fs;
 use std::path::PathBuf;
+#[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
+#[allow(unused_imports)]
 use crate::AppState;
 
 /// Check if Python backend is set up, and install dependencies if needed

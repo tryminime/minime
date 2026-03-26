@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    JWT_REMEMBER_DEVICE_EXPIRE_DAYS: int = 90  # Long-lived token when "remember this device" checked
     
     # Database - PostgreSQL
     POSTGRES_HOST: str = "localhost"
@@ -36,9 +37,14 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "minime"
     POSTGRES_PASSWORD: str = "minime_dev_password"
     POSTGRES_DB: str = "minime"
+    DATABASE_URL_OVERRIDE: Optional[str] = None  # Render sets DATABASE_URL directly
     
     @property
     def DATABASE_URL(self) -> str:
+        # Use direct DATABASE_URL if provided (e.g. by Render)
+        override = self.DATABASE_URL_OVERRIDE or os.environ.get("DATABASE_URL")
+        if override:
+            return override
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Database - Neo4j (Knowledge Graph)
@@ -68,6 +74,16 @@ class Settings(BaseSettings):
     def QDRANT_URL(self) -> str:
         return f"http://{self.QDRANT_HOST}:{self.QDRANT_PORT}"
     
+    # Cloud Sync Databases (Pro/Enterprise — background sync targets)
+    SUPABASE_DB_URL: str = ""
+    UPSTASH_REDIS_URL: str = ""
+    CLOUD_NEO4J_URI: str = ""
+    CLOUD_NEO4J_USERNAME: str = ""
+    CLOUD_NEO4J_PASSWORD: str = ""
+    CLOUD_NEO4J_DATABASE: str = ""
+    CLOUD_QDRANT_URL: str = ""
+    CLOUD_QDRANT_API_KEY: str = ""
+    
     # Celery
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
@@ -84,7 +100,7 @@ class Settings(BaseSettings):
     GRAPH_CENTRALITY_SCHEDULE: str = "0 2 * * 0"  # Sunday 2 AM (cron)
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000,http://localhost:5173,http://localhost:1420"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000,http://localhost:5173,http://localhost:1420,https://www.tryminime.com,https://tryminime.com"
     
     # OAuth Integrations
     GITHUB_CLIENT_ID: str = ""

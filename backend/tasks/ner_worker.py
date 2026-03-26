@@ -11,13 +11,13 @@ This worker:
 7. Publishes entity.created events
 """
 
-from backend.config.celery_config import celery_app
-from backend.database.postgres import SessionLocal
-from backend.models import Activity, Entity, EntityOccurrence
-from backend.services.nlp_service import nlp_service
-from backend.services.entity_normalizer import entity_normalizer
-from backend.services.event_bus import EventBus
-from backend.database.redis_client import get_redis_client
+from config.celery_config import celery_app
+from database.postgres import SessionLocal
+from models import Activity, Entity, EntityOccurrence
+from services.spacy_bert_ner import spacy_bert_ner
+from services.entity_normalizer import entity_normalizer
+from services.event_bus import EventBus
+from database.redis_client import get_redis_client
 from sqlalchemy import select
 from uuid import UUID
 import structlog
@@ -59,7 +59,7 @@ def process_activity_ner(self, activity_id: str):
             logger.debug("Extracted text for NER", activity_id=activity_id, text_length=len(text_blob))
             
             # Run NER
-            extracted_entities = nlp_service.extract_entities(text_blob)
+            extracted_entities = spacy_bert_ner.extract_entities(text_blob, context=activity.context)
             logger.info("Entities extracted by spaCy", count=len(extracted_entities), activity_id=activity_id)
             
             if not extracted_entities:
@@ -89,7 +89,7 @@ def process_activity_ner(self, activity_id: str):
                     
                     # (Week 8) Sync entity to Neo4j
                     try:
-                        from backend.services.neo4j_sync_service import neo4j_sync_service
+                        from services.neo4j_sync_service import neo4j_sync_service
                         neo4j_sync_service.create_or_update_entity_node(entity)
                     except Exception as neo_exc:
                         logger.debug("Neo4j sync skipped", error=str(neo_exc))
@@ -115,7 +115,7 @@ def process_activity_ner(self, activity_id: str):
             # (Week 8) Create co-occurrence relationships in Neo4j
             if occurrence_count >= 2:
                 try:
-                    from backend.services.neo4j_sync_service import neo4j_sync_service
+                    from services.neo4j_sync_service import neo4j_sync_service
                     neo4j_sync_service.create_co_occurrence_relationships(activity.id)
                 except Exception as neo_exc:
                     logger.debug("Neo4j relationship creation skipped", error=str(neo_exc))
@@ -295,7 +295,7 @@ def test_ner_on_text(text: str) -> list:
     Returns:
         List of extracted entities
     """
-    entities = nlp_service.extract_entities(text)
+    entities = spacy_bert_ner.extract_entities(text)
     
     print(f"\nExtracted {len(entities)} entities from text:")
     print(f"Text: {text[:100]}...\n")

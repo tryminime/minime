@@ -2,8 +2,8 @@
 # This package shadows backend/models.py so we re-export from there
 
 # Import analytics models from this package
-from backend.models.analytics_models import DailyMetrics, DailySummary, WeeklyReport, AnalyticsEmail, UserGoal
-from backend.models.integration_models import Integration
+from models.analytics_models import DailyMetrics, DailySummary, WeeklyReport, AnalyticsEmail, UserGoal
+from models.integration_models import Integration
 
 # Re-export models from backend/models.py (the main ORM models file)
 # Import as module to avoid recursion
@@ -27,6 +27,8 @@ EntityOccurrence = getattr(_root_models, 'EntityOccurrence')  # Alias for Activi
 Activity = getattr(_root_models, 'Activity')
 Session = getattr(_root_models, 'Session')
 AuditLog = getattr(_root_models, 'AuditLog')
+ContentItem = getattr(_root_models, 'ContentItem')
+SyncHistory = getattr(_root_models, 'SyncHistory')
 
 __all__ = [
     # Analytics models (from package)
@@ -45,4 +47,7 @@ __all__ = [
     "Activity",
     "Session",
     "AuditLog",
+    "ContentItem",
+    "SyncHistory",
 ]
+

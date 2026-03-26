@@ -4,7 +4,7 @@ Used for background processing of CPU-intensive operations.
 """
 
 from celery import Celery
-from backend.config import settings
+from config import settings
 import structlog
 
 logger = structlog.get_logger()

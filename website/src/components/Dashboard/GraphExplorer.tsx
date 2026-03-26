@@ -12,19 +12,38 @@ interface GraphExplorerProps {
     selectedNode?: string | null;
     filters?: {
         nodeTypes?: string[];
+        relationshipTypes?: string[];
         searchQuery?: string;
     };
     onSigmaReady?: (sigma: Sigma) => void;
 }
 
-// Color mapping for node types
+// Color mapping for node types — matches backend NodeType enum
 const NODE_COLORS: Record<string, string> = {
-    PERSON: '#3b82f6',
-    PROJECT: '#8b5cf6',
-    SKILL: '#10b981',
-    ORGANIZATION: '#f59e0b',
-    DOCUMENT: '#6b7280',
+    PERSON:       '#3b82f6',  // blue
+    PROJECT:      '#8b5cf6',  // purple
+    TOPIC:        '#10b981',  // emerald
+    ORGANIZATION: '#f59e0b',  // amber
+    INSTITUTION:  '#6366f1',  // indigo
+    TOOL:         '#06b6d4',  // cyan
+    PAPER:        '#6b7280',  // gray
+    DATASET:      '#84cc16',  // lime
+    VENUE:        '#f43f5e',  // rose
+    // Legacy fallbacks
+    SKILL:        '#10b981',
+    DOCUMENT:     '#6b7280',
 };
+
+// Color legend shown in the graph canvas
+const LEGEND = [
+    { label: 'People',        color: '#3b82f6' },
+    { label: 'Organizations', color: '#f59e0b' },
+    { label: 'Projects',      color: '#8b5cf6' },
+    { label: 'Topics',        color: '#10b981' },
+    { label: 'Institutions',  color: '#6366f1' },
+    { label: 'Tools',         color: '#06b6d4' },
+    { label: 'Papers',        color: '#6b7280' },
+];
 
 export function GraphExplorer({ onNodeClick, selectedNode, filters, onSigmaReady }: GraphExplorerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -32,6 +51,7 @@ export function GraphExplorer({ onNodeClick, selectedNode, filters, onSigmaReady
     const graphRef = useRef<Graph | null>(null);
     const { data, isLoading, error } = useGraphData();
     const [isInitialized, setIsInitialized] = useState(false);
+    const [isLegendOpen, setIsLegendOpen] = useState(false);
 
     useEffect(() => {
         if (!containerRef.current || !data || isLoading) return;
@@ -53,12 +73,13 @@ export function GraphExplorer({ onNodeClick, selectedNode, filters, onSigmaReady
             });
         });
 
-        // Add edges
+        // Add edges — guard against duplicates (Simple graph doesn't allow them)
         data.edges.forEach((edge: GraphEdge) => {
-            if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
+            if (graph.hasNode(edge.source) && graph.hasNode(edge.target) && !graph.hasEdge(edge.source, edge.target)) {
                 graph.addEdge(edge.source, edge.target, {
                     size: Math.max(1, edge.weight / 10),
                     color: '#e5e7eb',
+                    relType: edge.rel_type ?? '',  // store for relationship type filtering
                 });
             }
         });
@@ -67,10 +88,12 @@ export function GraphExplorer({ onNodeClick, selectedNode, filters, onSigmaReady
         if (!data.nodes[0]?.x) {
             circular.assign(graph);
             forceAtlas2.assign(graph, {
-                iterations: 50,
+                iterations: 100,
                 settings: {
-                    gravity: 1,
-                    scalingRatio: 10,
+                    gravity: 0.2,
+                    scalingRatio: 40,
+                    barnesHutOptimize: true,
+                    strongGravityMode: false,
                 },
             });
         }
@@ -80,8 +103,12 @@ export function GraphExplorer({ onNodeClick, selectedNode, filters, onSigmaReady
             renderEdgeLabels: false,
             defaultNodeColor: '#6b7280',
             defaultEdgeColor: '#e5e7eb',
-            labelSize: 12,
+            labelSize: 11,
             labelColor: { color: '#374151' },
+            labelRenderedSizeThreshold: 8,
+            labelDensity: 0.07,
+            labelGridCellSize: 60,
+            zIndex: true,
         });
 
         sigmaRef.current = sigma;
@@ -124,26 +151,35 @@ export function GraphExplorer({ onNodeClick, selectedNode, filters, onSigmaReady
         };
     }, [data, isLoading]);
 
-    // Apply filters
+    // Apply filters (node types, relationship types, search)
     useEffect(() => {
         if (!graphRef.current || !isInitialized) return;
 
         const graph = graphRef.current;
+        const activeNodeTypes = filters?.nodeTypes ?? [];
+        const activeRelTypes = filters?.relationshipTypes ?? [];
+        const query = (filters?.searchQuery ?? '').toLowerCase();
 
         graph.forEachNode((node) => {
             const nodeData = graph.getNodeAttributes(node);
             let visible = true;
 
-            if (filters?.nodeTypes && filters.nodeTypes.length > 0) {
-                visible = visible && filters.nodeTypes.includes(nodeData.nodeType);
+            if (activeNodeTypes.length > 0) {
+                visible = visible && activeNodeTypes.includes(nodeData.nodeType);
             }
-
-            if (filters?.searchQuery) {
-                const query = filters.searchQuery.toLowerCase();
+            if (query) {
                 visible = visible && nodeData.label.toLowerCase().includes(query);
             }
 
             graph.setNodeAttribute(node, 'hidden', !visible);
+        });
+
+        // Filter edges by relationship type
+        graph.forEachEdge((edge) => {
+            const edgeData = graph.getEdgeAttributes(edge);
+            const relType: string = edgeData.relType ?? '';
+            const edgeVisible = activeRelTypes.length === 0 || activeRelTypes.includes(relType);
+            graph.setEdgeAttribute(edge, 'hidden', !edgeVisible);
         });
 
         sigmaRef.current?.refresh();
@@ -196,11 +232,35 @@ export function GraphExplorer({ onNodeClick, selectedNode, filters, onSigmaReady
         <div className="relative w-full h-full">
             <div ref={containerRef} className="w-full h-full bg-white" />
 
+            {/* Node type color legend */}
+            <div className="absolute bottom-4 left-4 flex flex-col items-start gap-2">
+                <button
+                    onClick={() => setIsLegendOpen(!isLegendOpen)}
+                    className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-md px-3 py-2 text-xs font-semibold text-gray-700 border border-gray-100 hover:bg-gray-50 transition-colors"
+                >
+                    Legend
+                    <svg className={`w-3 h-3 transition-transform ${isLegendOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                
+                {isLegendOpen && (
+                    <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-md p-3 text-xs space-y-1.5 border border-gray-100 min-w-[140px] animate-in fade-in slide-in-from-bottom-2">
+                        {LEGEND.map(({ label, color }) => (
+                            <div key={label} className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                                <span className="text-gray-600">{label}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             {data && (
-                <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 text-xs">
-                    <p className="font-semibold text-gray-700">Graph Stats</p>
-                    <p className="text-gray-600">{data.stats.node_count} nodes</p>
-                    <p className="text-gray-600">{data.stats.edge_count} edges</p>
+                <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs">
+                    <p className="font-semibold text-gray-700">Visible Graph State</p>
+                    <p className="text-gray-600">{data.stats.node_count} top active nodes</p>
+                    <p className="text-gray-600">{data.stats.edge_count} relationships</p>
                     <p className="text-gray-600">Avg degree: {data.stats.avg_degree.toFixed(1)}</p>
                 </div>
             )}

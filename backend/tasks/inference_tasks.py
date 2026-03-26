@@ -8,8 +8,8 @@ from typing import Dict, Any
 import logging
 from datetime import datetime
 
-from backend.services.relationship_inference import relationship_inference_service
-from backend.services.graph_ingestion import graph_ingestion_service
+from services.relationship_inference import relationship_inference_service
+from services.graph_ingestion import graph_ingestion_service
 
 logger = logging.getLogger(__name__)
 

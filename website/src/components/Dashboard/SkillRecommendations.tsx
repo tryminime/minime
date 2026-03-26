@@ -1,6 +1,7 @@
 'use client';
 
 import { Lightbulb, Clock, TrendingUp, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { useSkillsMetrics } from '@/lib/hooks/useSkillsMetrics';
 
 export function SkillRecommendations() {
@@ -57,7 +58,7 @@ export function SkillRecommendations() {
             </div>
 
             <p className="text-sm text-gray-600 mb-4">
-                Based on your current skill set and industry trends
+                Based on your activity patterns and skill gaps
             </p>
 
             <div className="space-y-3">
@@ -85,16 +86,19 @@ export function SkillRecommendations() {
 
                         <p className="text-sm text-gray-600 mb-3">{skill.reason}</p>
 
-                        <button className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        <Link 
+                            href={`/dashboard/chat?prompt=I+want+to+start+learning+${encodeURIComponent(skill.name)}.+Can+you+help+me+create+a+learning+plan%3F`}
+                            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 group-hover:gap-2 transition-all"
+                        >
                             Start learning
                             <ArrowRight className="w-4 h-4" />
-                        </button>
+                        </Link>
                     </div>
                 ))}
             </div>
 
             {data.recommended_skills.length > 5 && (
-                <button className="w-full mt-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <button className="w-full mt-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
                     View all recommendations →
                 </button>
             )}

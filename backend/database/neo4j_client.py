@@ -6,7 +6,7 @@ from neo4j import AsyncGraphDatabase, AsyncDriver
 from typing import Optional, Dict, List, Any
 import structlog
 
-from backend.config import settings
+from config import settings
 
 logger = structlog.get_logger()
 
@@ -20,7 +20,7 @@ async def init_neo4j():
     
     driver = AsyncGraphDatabase.driver(
         settings.NEO4J_URI,
-        auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+        auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD),
         max_connection_pool_size=50,
         connection_timeout=30
     )

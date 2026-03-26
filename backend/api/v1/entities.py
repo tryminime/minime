@@ -11,14 +11,15 @@ Handles:
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from pydantic import BaseModel
 from typing import List, Optional, Dict
 from uuid import UUID
 import structlog
 
-from backend.database.postgres import get_db
-from backend.models import Entity, ActivityEntityLink
-from backend.auth.jwt_handler import get_current_user
-from backend.services.entity_deduplication import deduplication_service
+from database.postgres import get_db
+from models import Entity, ActivityEntityLink
+from auth.jwt_handler import get_current_user
+from services.entity_deduplication import deduplication_service
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -28,7 +29,7 @@ router = APIRouter()
 # ENTITY LISTING & RETRIEVAL
 # =====================================================
 
-@router.get("/entities")
+@router.get("/")
 async def list_entities(
     entity_type: Optional[str] = Query(None, alias="type", description="Filter by entity type"),
     limit: int = Query(100, ge=1, le=1000),
@@ -83,7 +84,138 @@ async def list_entities(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/entities/{entity_id}")
+# =====================================================
+# ENTITY STATS — single query for total + per-type counts
+# NOTE: Must be defined before /entities/{entity_id}
+# =====================================================
+
+@router.get("/stats")
+async def get_entity_stats(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return total entity count and counts grouped by entity_type
+    in a single database query. Replaces 6 individual list calls.
+    """
+    user_id = UUID(current_user["id"]) if isinstance(current_user, dict) else current_user.id
+
+    try:
+        stmt = (
+            select(Entity.entity_type, func.count())
+            .where(Entity.user_id == user_id)
+            .group_by(Entity.entity_type)
+        )
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        by_type = {row[0]: row[1] for row in rows}
+        total = sum(by_type.values())
+
+        return {
+            "total": total,
+            "by_type": by_type,
+        }
+    except Exception as e:
+        logger.error("Failed to get entity stats", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# BULK DEDUPLICATION SCAN
+# NOTE: These MUST be defined before /entities/{entity_id}
+# so FastAPI doesn't capture 'dedup-scan' as a UUID path param.
+# =====================================================
+
+@router.get("/dedup-scan")
+async def dedup_scan(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Full deduplication scan for the authenticated user.
+
+    Runs multi-signal matching (embedding, external-ID, fuzzy-name,
+    token-set, alias) across ALL entities and clusters transitive
+    duplicates using Union-Find.
+
+    Returns clusters of size ≥ 2 sorted by confidence descending.
+    Each cluster includes: members, canonical_id, max/avg confidence,
+    match_reasons, recommendation (auto_merge | suggest | review).
+    """
+    user_id = UUID(current_user["id"]) if isinstance(current_user, dict) else current_user.id
+
+    try:
+        result = await deduplication_service.scan_all_for_user(user_id, db)
+        logger.info(
+            "Dedup scan complete",
+            user_id=str(user_id),
+            entities_scanned=result["entities_scanned"],
+            clusters=len(result["clusters"]),
+        )
+        return result
+    except Exception as e:
+        logger.error("Dedup scan failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class MergeClusterRequest(BaseModel):
+    entity_ids:   List[UUID]
+    canonical_id: Optional[UUID] = None
+
+
+@router.post("/dedup-merge-cluster")
+async def merge_cluster(
+    body: MergeClusterRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Merge an entire cluster of duplicate entities.
+
+    - canonical_id: which entity to keep (optional; if omitted, the one
+      with the highest occurrence_count is chosen automatically).
+    - All other entities are merged into canonical, their aliases and
+      external IDs are carried forward, occurrence counts summed.
+    """
+    user_id = UUID(current_user["id"]) if isinstance(current_user, dict) else current_user.id
+
+    if len(body.entity_ids) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 entity IDs required")
+
+    try:
+        merged = await deduplication_service.merge_cluster(
+            entity_ids=body.entity_ids,
+            canonical_id=body.canonical_id,
+            user_id=user_id,
+            db=db,
+        )
+        if not merged:
+            raise HTTPException(status_code=404, detail="Entities not found or merge failed")
+
+        logger.info(
+            "Cluster merged",
+            user_id=str(user_id),
+            entity_count=len(body.entity_ids),
+            canonical_id=str(body.canonical_id) if body.canonical_id else None,
+        )
+        return {
+            "status":        "success",
+            "merged_count":  len(body.entity_ids) - 1,
+            "canonical":     merged,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Cluster merge failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# ENTITY RETRIEVAL BY ID (dynamic — must come after static routes)
+# =====================================================
+
+@router.get("/{entity_id}")
 async def get_entity(
     entity_id: UUID,
     current_user=Depends(get_current_user),
@@ -140,7 +272,7 @@ async def get_entity(
 # DUPLICATE DETECTION
 # =====================================================
 
-@router.get("/entities/{entity_id}/duplicates")
+@router.get("/{entity_id}/duplicates")
 async def get_entity_duplicates(
     entity_id: UUID,
     threshold: float = Query(0.80, ge=0.0, le=1.0, description="Minimum confidence score"),
@@ -206,13 +338,17 @@ async def get_entity_duplicates(
 
 
 # =====================================================
-# ENTITY MERGING
+# ENTITY MERGING (2-way, kept for backward compat)
 # =====================================================
 
-@router.post("/entities/merge")
+class MergeRequest(BaseModel):
+    source_id: UUID
+    target_id: UUID
+
+
+@router.post("/merge")
 async def merge_entities(
-    source_id: UUID,
-    target_id: UUID,
+    request: MergeRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -237,8 +373,8 @@ async def merge_entities(
     try:
         # Perform merge
         merged_entity = deduplication_service.merge_entities(
-            source_id=source_id,
-            target_id=target_id,
+            source_id=request.source_id,
+            target_id=request.target_id,
             user_id=user_id
         )
         
@@ -247,8 +383,8 @@ async def merge_entities(
         
         logger.info(
             "Entities merged via API",
-            source_id=str(source_id),
-            target_id=str(target_id),
+            source_id=str(request.source_id),
+            target_id=str(request.target_id),
             user_id=str(user_id)
         )
         
@@ -269,10 +405,9 @@ async def merge_entities(
 # GRAPH QUERIES (Placeholder for Neo4j integration)
 # =====================================================
 
-@router.get("/entities/{entity_id}/neighbors")
+@router.get("/{entity_id}/neighbors")
 async def get_entity_neighbors(
     entity_id: UUID,
-    depth: int = Query(1, ge=1, le=3, description="Traversal depth"),
     relationship_type: Optional[str] = Query(None, description="Filter by relationship type"),
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -331,16 +466,24 @@ async def get_entity_neighbors(
         for link in co_occurring:
             neighbor_map[link.entity_id] = neighbor_map.get(link.entity_id, 0) + 1
 
-        # Fetch full entity objects, sorted by co-occurrence count
+        # Fetch full entity objects in a single batch query (avoids N+1)
+        sorted_neighbors = sorted(neighbor_map.items(), key=lambda x: x[1], reverse=True)[:20]
+        neighbor_ids = [nid for nid, _ in sorted_neighbors]
+
+        if neighbor_ids:
+            batch_stmt = select(Entity).where(
+                Entity.id.in_(neighbor_ids),
+                Entity.user_id == user_id,
+            )
+            batch_result = await db.execute(batch_stmt)
+            entity_by_id = {e.id: e for e in batch_result.scalars().all()}
+        else:
+            entity_by_id = {}
+
         neighbors = []
         edges = []
-        for neighbor_id, count in sorted(neighbor_map.items(), key=lambda x: x[1], reverse=True)[:20]:
-            n_stmt = select(Entity).where(
-                Entity.id == neighbor_id,
-                Entity.user_id == user_id
-            )
-            n_result = await db.execute(n_stmt)
-            neighbor_entity = n_result.scalar_one_or_none()
+        for neighbor_id, count in sorted_neighbors:
+            neighbor_entity = entity_by_id.get(neighbor_id)
             if neighbor_entity:
                 neighbors.append({
                     "entity": neighbor_entity.to_dict(),

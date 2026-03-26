@@ -13,6 +13,10 @@ export default defineConfig({
     server: {
         port: 1420,
         strictPort: true,
+        watch: {
+            // Exclude Rust build artifacts and node_modules to avoid ENOSPC file watcher limit
+            ignored: ['**/src-tauri/target/**', '**/node_modules/**'],
+        },
     },
     envPrefix: ['VITE_', 'TAURI_'],
     build: {

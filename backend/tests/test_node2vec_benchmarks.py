@@ -9,7 +9,7 @@ import numpy as np
 import networkx as nx
 from unittest.mock import patch, Mock
 
-from backend.services.node2vec_service import Node2VecService
+from services.node2vec_service import Node2VecService
 
 
 class TestNode2VecPerformance:

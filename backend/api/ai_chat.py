@@ -13,11 +13,11 @@ from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
-from ..database.postgres_client import get_db
-from ..services.conversation_service import conversation_service
-from ..services.rag_service import rag_service
-from ..services.conversation_export_service import conversation_export_service
-from ..auth.jwt_handler import decode_token, verify_token_type
+from database.postgres_client import get_db
+from services.conversation_service import conversation_service
+from services.rag_service import rag_service
+from services.conversation_export_service import conversation_export_service
+from auth.jwt_handler import decode_token, verify_token_type
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from datetime import datetime, timezone
@@ -28,6 +28,7 @@ import json
 import structlog
 
 security = HTTPBearer()
+logger = structlog.get_logger()
 
 def _get_user_id(credentials: HTTPAuthorizationCredentials) -> str:
     """Extract user_id from JWT token."""
@@ -75,6 +76,7 @@ class ChatRequest(BaseModel):
     context: Optional[Dict[str, str]] = None
     use_rag: bool = True
     stream: bool = False
+    template_id: Optional[str] = None  # Custom prompt template to use
 
 class ChatResponse(BaseModel):
     message: str
@@ -343,6 +345,117 @@ Suggestion: Schedule deep work during your morning peak hours!"""
 llm_manager = LLMManager()
 
 # ============================================================================
+# CUSTOM PROMPT TEMPLATE MANAGER
+# ============================================================================
+
+BUILTIN_TEMPLATES = [
+    {
+        "id": "productivity_coach",
+        "name": "Productivity Coach",
+        "icon": "📊",
+        "description": "Get personalized productivity advice based on your activity patterns",
+        "prompt": "You are an expert productivity coach. Analyze the user's work patterns, focus metrics, and break habits to provide actionable advice. Be specific, cite their data, and suggest concrete improvements. Prioritize work-life balance.",
+        "builtin": True,
+    },
+    {
+        "id": "code_review",
+        "name": "Code Review",
+        "icon": "🔍",
+        "description": "Get code review feedback and suggestions",
+        "prompt": "You are a senior software engineer doing a code review. Focus on: code quality, potential bugs, performance issues, security concerns, and best practices. Be constructive and suggest specific improvements with code examples.",
+        "builtin": True,
+    },
+    {
+        "id": "weekly_summary",
+        "name": "Weekly Summary",
+        "icon": "📋",
+        "description": "Generate a summary of your week's work and achievements",
+        "prompt": "You are a professional assistant creating a weekly work summary. Use the user's activity data to highlight: key accomplishments, time allocation, focus patterns, collaboration highlights, and areas for improvement. Format as a clean, shareable report.",
+        "builtin": True,
+    },
+    {
+        "id": "creative_writing",
+        "name": "Creative Writing",
+        "icon": "✍️",
+        "description": "Help with creative writing, brainstorming, and content creation",
+        "prompt": "You are a creative writing assistant. Help the user brainstorm ideas, write drafts, refine prose, and develop compelling narratives. Adapt your style to match their preferred tone — professional, casual, technical, or storytelling.",
+        "builtin": True,
+    },
+    {
+        "id": "research_assistant",
+        "name": "Research Assistant",
+        "icon": "🔬",
+        "description": "Deep research and analysis on any topic",
+        "prompt": "You are a thorough research assistant. When asked about a topic, provide: comprehensive analysis, multiple perspectives, supporting evidence from the user's knowledge graph if relevant, and structured conclusions. Always cite sources and distinguish facts from opinions.",
+        "builtin": True,
+    },
+]
+
+
+class PromptTemplateManager:
+    """Manages custom prompt templates per user."""
+
+    def __init__(self):
+        self._user_templates: Dict[str, Dict[str, Dict[str, Any]]] = {}  # user_id -> {template_id -> template}
+
+    def list_templates(self, user_id: str) -> List[Dict[str, Any]]:
+        """List all templates (builtins + user's custom ones)."""
+        custom = list(self._user_templates.get(user_id, {}).values())
+        return BUILTIN_TEMPLATES + custom
+
+    def get_template(self, user_id: str, template_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific template by ID."""
+        for t in BUILTIN_TEMPLATES:
+            if t["id"] == template_id:
+                return t
+        return self._user_templates.get(user_id, {}).get(template_id)
+
+    def create_template(self, user_id: str, name: str, prompt: str, icon: str = "⭐", description: str = "") -> Dict[str, Any]:
+        """Create a custom template."""
+        template_id = str(uuid.uuid4())[:8]
+        template = {
+            "id": template_id,
+            "name": name,
+            "icon": icon,
+            "description": description,
+            "prompt": prompt,
+            "builtin": False,
+            "user_id": user_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if user_id not in self._user_templates:
+            self._user_templates[user_id] = {}
+        self._user_templates[user_id][template_id] = template
+        return template
+
+    def update_template(self, user_id: str, template_id: str, name: Optional[str] = None, prompt: Optional[str] = None, icon: Optional[str] = None, description: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Update a custom template (cannot edit builtins)."""
+        templates = self._user_templates.get(user_id, {})
+        t = templates.get(template_id)
+        if not t:
+            return None
+        if name is not None:
+            t["name"] = name
+        if prompt is not None:
+            t["prompt"] = prompt
+        if icon is not None:
+            t["icon"] = icon
+        if description is not None:
+            t["description"] = description
+        return t
+
+    def delete_template(self, user_id: str, template_id: str) -> bool:
+        """Delete a custom template."""
+        templates = self._user_templates.get(user_id, {})
+        if template_id in templates:
+            del templates[template_id]
+            return True
+        return False
+
+
+template_manager = PromptTemplateManager()
+
+# ============================================================================
 # AI CHAT ENDPOINTS (Enhanced with persistence + RAG)
 # ============================================================================
 
@@ -356,25 +469,36 @@ async def send_message(
 
     user_id = _get_user_id(credentials)
     conversation_id = request.conversation_id or str(uuid.uuid4())
+    logger.info("send_message_start", user_id=user_id, use_rag=request.use_rag, msg=request.message[:50])
 
     # Get user context (REAL data from DB)
     user_context = await _get_user_context(credentials, db)
+    logger.info("send_message_context_built", user_id=user_id)
 
     # Build personalized system prompt from real user data
     system_prompt = _build_personalized_system_prompt(user_context)
 
-    # RAG: Retrieve relevant context
+    # Apply custom template prefix if specified
+    if request.template_id:
+        template = template_manager.get_template(user_id, request.template_id)
+        if template:
+            system_prompt = template["prompt"] + "\n\n" + system_prompt
+
+    # RAG: Retrieve relevant context from activities + knowledge base
     citations = []
     if request.use_rag:
-        # Index recent activities into RAG store (populate if empty / stale)
+        logger.info("send_message_rag_start", user_id=user_id)
+        # Index recent activities + KB items into RAG store (populate if empty / stale)
         await _index_activities_into_rag(db, user_id)
 
-        rag_collection = f"activities_{user_id}"
+        rag_collections = [f"activities_{user_id}", f"knowledge_{user_id}"]
         rag_results = rag_service.retrieve(
             query=request.message,
-            collections=[rag_collection],
-            top_k=5,
+            collections=rag_collections,
+            top_k=8,
+            min_score=0.05,
         )
+        logger.info("send_rag_retrieved", user_id=user_id, result_count=len(rag_results) if rag_results else 0, collections=rag_collections)
         if rag_results:
             augmented = rag_service.build_augmented_prompt(
                 query=request.message,
@@ -382,6 +506,7 @@ async def send_message(
             )
             system_prompt += f"\n\n{augmented['context_text']}"
             citations = augmented.get('citations', [])
+            logger.info("send_rag_augmented", context_len=len(augmented.get('context_text', '')), citation_count=len(citations))
 
 
 
@@ -435,13 +560,32 @@ async def stream_message(
 
     user_id = _get_user_id(credentials)
     conversation_id = request.conversation_id or str(uuid.uuid4())
+    logger.info("stream_message_start", user_id=user_id, use_rag=request.use_rag, message_preview=request.message[:50])
 
     user_context = await _get_user_context(credentials, db)
     system_prompt = _build_personalized_system_prompt(user_context)
 
-    # Index activities into RAG for this user
+    # RAG: Retrieve context from activities + knowledge base for streaming
+    citations = []
     if request.use_rag:
         await _index_activities_into_rag(db, user_id)
+
+        rag_collections = [f"activities_{user_id}", f"knowledge_{user_id}"]
+        rag_results = rag_service.retrieve(
+            query=request.message,
+            collections=rag_collections,
+            top_k=8,
+            min_score=0.05,
+        )
+        logger.info("stream_rag_retrieved", user_id=user_id, result_count=len(rag_results) if rag_results else 0)
+        if rag_results:
+            augmented = rag_service.build_augmented_prompt(
+                query=request.message,
+                retrieved_docs=rag_results,
+            )
+            system_prompt += f"\n\n{augmented['context_text']}"
+            citations = augmented.get('citations', [])
+            logger.info("stream_rag_augmented", context_len=len(augmented.get('context_text', '')), citation_count=len(citations))
 
     messages = conversation_service.build_llm_messages(
         user_id=user_id,
@@ -472,9 +616,10 @@ async def stream_message(
             role="assistant",
             content=complete_text,
             model=llm_manager.get_model_name(),
+            citations=citations,
         )
 
-        yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
+        yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id, 'citations': citations})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -483,6 +628,8 @@ async def stream_message(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Credentials": "true",
         }
     )
 
@@ -622,6 +769,115 @@ async def smart_search(
 
 
 # ============================================================================
+# PROACTIVE INSIGHTS ENDPOINT
+# ============================================================================
+
+@ai_router.get("/insights")
+async def get_proactive_insights(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    """Get proactive insights based on user activity patterns."""
+    from models import Activity
+    from services.proactive_insights_service import proactive_insights_service
+    from datetime import timedelta, timezone
+    import uuid as uuid_lib
+
+    user_id = _get_user_id(credentials)
+    try:
+        user_uuid = uuid_lib.UUID(str(user_id))
+    except Exception:
+        return {"insights": [], "total": 0}
+
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Fetch recent activities for metrics
+    result = db.execute(
+        select(Activity).where(
+            Activity.user_id == user_uuid,
+            Activity.occurred_at >= week_ago,
+        ).order_by(Activity.occurred_at.desc()).limit(500)
+    )
+    activities = result.scalars().all()
+
+    if not activities:
+        return {"insights": [], "total": 0}
+
+    # Build daily metrics for the insights engine
+    daily_buckets: dict = {}
+    for a in activities:
+        if not a.occurred_at:
+            continue
+        day_key = a.occurred_at.strftime("%Y-%m-%d")
+        if day_key not in daily_buckets:
+            daily_buckets[day_key] = {
+                "total_hours": 0, "deep_work_hours": 0,
+                "focus_score": 0, "meeting_hours": 0,
+                "meeting_count": 0, "late_night_hours": 0,
+                "_total_s": 0, "_focused_s": 0,
+            }
+        b = daily_buckets[day_key]
+        dur = a.duration_seconds or 0
+        b["total_hours"] += dur / 3600
+        b["_total_s"] += dur
+        if a.type in ("window_focus", "app_focus") and dur >= 600:
+            b["deep_work_hours"] += dur / 3600
+            b["_focused_s"] += dur
+        if a.type == "meeting":
+            b["meeting_hours"] += dur / 3600
+            b["meeting_count"] += 1
+        if a.occurred_at.hour >= 22:
+            b["late_night_hours"] += dur / 3600
+
+    # Calculate focus scores per day
+    for b in daily_buckets.values():
+        b["focus_score"] = min(10.0, (b["_focused_s"] / max(b["_total_s"], 1)) * 10)
+
+    sorted_days = sorted(daily_buckets.keys())
+    today_key = now.strftime("%Y-%m-%d")
+    today_metrics = daily_buckets.get(today_key, {"total_hours": 0, "focus_score": 0, "deep_work_hours": 0})
+    historical = [daily_buckets[d] for d in sorted_days if d != today_key]
+
+    # Generate insights via the existing service
+    insights = proactive_insights_service.generate_daily_insights(
+        user_id=user_id,
+        daily_metrics=today_metrics,
+        historical_metrics=historical,
+    )
+
+    # Also return any previously generated active insights
+    active = proactive_insights_service.get_active_insights(user_id=user_id, limit=10)
+
+    # Merge (dedup by title)
+    seen = set()
+    merged = []
+    for i in insights + active:
+        if i["title"] not in seen:
+            seen.add(i["title"])
+            merged.append(i)
+
+    return {"insights": merged[:10], "total": len(merged)}
+
+
+# ============================================================================
+# MILESTONE CELEBRATIONS ENDPOINT
+# ============================================================================
+
+@ai_router.get("/milestones")
+async def get_milestones(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    """Get milestone celebrations — unlocked achievements and progress."""
+    from services.milestone_service import check_milestones
+
+    user_id = _get_user_id(credentials)
+    return await check_milestones(user_id, db)
+
+
+# ============================================================================
 # ANALYTICS ENDPOINTS FOR AI
 # ============================================================================
 
@@ -631,7 +887,7 @@ async def get_focus_score(
     db: Session = Depends(get_db)
 ):
     """Get user's current focus score — computed from real activities."""
-    from backend.models import Activity
+    from models import Activity
     from sqlalchemy import select
     from datetime import datetime, timedelta, timezone
     import uuid as uuid_lib
@@ -696,7 +952,7 @@ async def get_wellness_score(
     db: Session = Depends(get_db)
 ):
     """Get user's wellness/burnout score — computed from real activities."""
-    from backend.models import Activity
+    from models import Activity
     from sqlalchemy import select
     from datetime import datetime, timedelta, timezone
     import uuid as uuid_lib
@@ -762,7 +1018,8 @@ async def get_wellness_score(
             "collaboration_stress": round(min(100, len([a for a in activities if a.type == "meeting"]) * 10)),
             "work_life_balance": round(session_balance),
             "skill_utilization": round(variety),
-            "growth_opportunity": round(variety * 0.8)
+            "growth_opportunity": round(variety * 0.8),
+            "break_ratio": round(break_ratio * 100)
         },
         "recommendations": recs
     }
@@ -773,7 +1030,7 @@ async def generate_weekly_report(
     db: Session = Depends(get_db)
 ):
     """Generate weekly activity report — computed from real activities."""
-    from backend.models import Activity
+    from models import Activity
     from sqlalchemy import select
     from datetime import datetime, timedelta, timezone
     import uuid as uuid_lib
@@ -799,13 +1056,32 @@ async def generate_weekly_report(
     if not activities:
         return {"period": f"{week_start.strftime('%b %d')}-{now.strftime('%b %d, %Y')}", "total_hours": 0, "days_active": 0, "avg_focus_score": 0, "breakdown": {}, "trends": {}}
 
-    total_s = sum(a.duration_seconds or 0 for a in activities)
+    total_s = sum(min(a.duration_seconds or 0, 7200) for a in activities)
     total_h = total_s / 3600
     days_active = len(set(a.occurred_at.date() for a in activities if a.occurred_at))
-    deep = [a for a in activities if a.type in ("window_focus", "app_focus") and (a.duration_seconds or 0) >= 1500]
+
+    # Deep work: sessions >= 5 min for window/app focus, or aggregated web_visit per domain >= 5 min
+    deep_s = 0.0
+    for a in activities:
+        if a.type in ("window_focus", "app_focus") and (min(a.duration_seconds or 0, 7200)) >= 300:
+            deep_s += min(a.duration_seconds or 0, 7200)
+
+    # Aggregate web_visit per domain for deep work
+    domain_totals: dict[str, float] = {}
+    for a in activities:
+        if a.type == "web_visit":
+            key = getattr(a, 'domain', None) or "unknown"
+            domain_totals[key] = domain_totals.get(key, 0) + min(a.duration_seconds or 0, 7200)
+    for dtotal in domain_totals.values():
+        if dtotal >= 300:
+            deep_s += dtotal
+
     meetings = [a for a in activities if a.type == "meeting"]
-    focused_s = sum(a.duration_seconds or 0 for a in deep)
-    focus_score = min(10, (focused_s / max(total_s, 1)) * 10)
+
+    # Focus score: ratio of productive time (including aggregated web_visit) to total
+    productive_types = {"window_focus", "app_focus", "web_visit", "page_view"}
+    productive_s = sum(min(a.duration_seconds or 0, 7200) for a in activities if a.type in productive_types)
+    focus_score = min(10, (productive_s / max(total_s, 1)) * 10) if total_s > 0 else 0
 
     return {
         "period": f"{week_start.strftime('%b %d')}-{now.strftime('%b %d, %Y')}",
@@ -813,9 +1089,9 @@ async def generate_weekly_report(
         "days_active": days_active,
         "avg_focus_score": round(focus_score, 1),
         "breakdown": {
-            "deep_work": round(sum(a.duration_seconds or 0 for a in deep) / 3600, 1),
-            "meetings": round(sum(a.duration_seconds or 0 for a in meetings) / 3600, 1),
-            "other": round((total_s - focused_s - sum(a.duration_seconds or 0 for a in meetings)) / 3600, 1),
+            "deep_work": round(deep_s / 3600, 1),
+            "meetings": round(sum(min(a.duration_seconds or 0, 7200) for a in meetings) / 3600, 1),
+            "other": round((total_s - deep_s - sum(min(a.duration_seconds or 0, 7200) for a in meetings)) / 3600, 1),
         },
         "trends": {}
     }
@@ -885,7 +1161,7 @@ async def _get_user_context(credentials: HTTPAuthorizationCredentials, db: Sessi
     Fetch REAL per-user context from the activities table.
     Returns actual stats used to personalise the AI system prompt.
     """
-    from backend.models import Activity
+    from models import Activity
     from sqlalchemy import select
     from datetime import datetime, timedelta, timezone
     import uuid as uuid_lib
@@ -1016,11 +1292,12 @@ async def _index_activities_into_rag(db: Session, user_id: str) -> None:
     Fetch recent activities from the DB and index them into the RAG store.
     Re-indexes every 5 minutes to ensure data freshness per user.
     """
-    from ..services.rag_service import rag_service
+    from services.rag_service import rag_service
 
-    # Re-index every 5 minutes
+    # Re-index every 60 seconds (reduced for testing)
     last_indexed = _rag_indexed_at.get(user_id, 0)
-    if _time.time() - last_indexed < 300:
+    if _time.time() - last_indexed < 60:
+        logger.info("rag_index_cached", user_id=user_id, seconds_since=round(_time.time() - last_indexed))
         return
 
     try:
@@ -1050,39 +1327,242 @@ async def _index_activities_into_rag(db: Session, user_id: str) -> None:
         )
         rows = result.fetchall()
 
-        if not rows:
-            return
+        # Index activities if any exist (don't early-return — KB indexing below)
+        if rows:
+            documents = []
+            for row in rows:
+                doc_id, act_type, app_name, win_title, meta, started_at, duration = row
+                title_parts = [p for p in [win_title, app_name, act_type] if p]
+                title = " — ".join(title_parts[:2]) if title_parts else "Activity"
+                content = (
+                    f"Activity type: {act_type or 'unknown'}. "
+                    f"App: {app_name or 'unknown'}. "
+                    f"Window: {win_title or ''}. "
+                    f"Duration: {round(duration or 0, 1)} min. "
+                    f"Time: {str(started_at)[:16]}."
+                )
+                documents.append({
+                    "id": doc_id,
+                    "title": title,
+                    "content": content,
+                    "type": "activity",
+                    "timestamp": str(started_at),
+                    "metadata": {"app": app_name, "type": act_type},
+                })
 
-        documents = []
-        for row in rows:
-            doc_id, act_type, app_name, win_title, meta, started_at, duration = row
-            title_parts = [p for p in [win_title, app_name, act_type] if p]
-            title = " — ".join(title_parts[:2]) if title_parts else "Activity"
-            content = (
-                f"Activity type: {act_type or 'unknown'}. "
-                f"App: {app_name or 'unknown'}. "
-                f"Window: {win_title or ''}. "
-                f"Duration: {round(duration or 0, 1)} min. "
-                f"Time: {str(started_at)[:16]}."
-            )
-            documents.append({
-                "id": doc_id,
-                "title": title,
-                "content": content,
-                "type": "activity",
-                "timestamp": str(started_at),
-                "metadata": {"app": app_name, "type": act_type},
-            })
+            # Delete old collection data and re-populate with fresh docs
+            try:
+                rag_service.delete_collection(collection)
+            except Exception:
+                pass
+            rag_service.add_documents(collection=collection, documents=documents)
+            logger.info("activities_rag_indexed", user_id=user_id, count=len(documents))
+        else:
+            logger.info("no_activities_found", user_id=user_id)
 
-        # Delete old collection data and re-populate with fresh docs
+        # ── Also index Knowledge Base items ──────────────────────────────
+        logger.info("kb_rag_indexing_start", user_id=user_id)
         try:
-            rag_service.delete_collection(collection)
-        except Exception:
-            pass
-        rag_service.add_documents(collection=collection, documents=documents)
+            from sqlalchemy import text as sa_text
+            kb_collection = f"knowledge_{user_id}"
+            kb_result = db.execute(
+                sa_text("""
+                    SELECT
+                        id::text,
+                        title,
+                        SUBSTRING(full_text, 1, 3000) AS content,
+                        doc_type,
+                        url,
+                        created_at::text AS created_at
+                    FROM content_items
+                    WHERE user_id = :user_id
+                    ORDER BY created_at DESC
+                    LIMIT 100
+                """),
+                {"user_id": user_id}
+            )
+            kb_rows = kb_result.fetchall()
+
+            if kb_rows:
+                kb_docs = []
+                for row in kb_rows:
+                    doc_id, title, content, doc_type, url, created_at = row
+                    kb_docs.append({
+                        "id": doc_id,
+                        "title": title or "Untitled document",
+                        "content": f"Document: {title or 'Untitled'}. Type: {doc_type}. URL: {url or 'N/A'}. Content: {content}",
+                        "type": "knowledge_base",
+                        "timestamp": str(created_at),
+                        "metadata": {"doc_type": doc_type, "url": url, "source": "knowledge_base"},
+                    })
+                try:
+                    rag_service.delete_collection(kb_collection)
+                except Exception:
+                    pass
+                rag_service.add_documents(collection=kb_collection, documents=kb_docs)
+                logger.info("kb_rag_indexed", user_id=user_id, count=len(kb_docs))
+        except Exception as e:
+            logger.warning("kb_rag_indexing_failed", error=str(e))
+
         _rag_indexed_at[user_id] = _time.time()
 
     except Exception as e:
         # Don't break chat if indexing fails — just log
         import structlog
         structlog.get_logger().warning("rag_indexing_failed", error=str(e))
+
+
+# ============================================================================
+# CUSTOM PROMPT TEMPLATE ENDPOINTS
+# ============================================================================
+
+class TemplateCreateRequest(BaseModel):
+    name: str
+    prompt: str
+    icon: str = "⭐"
+    description: str = ""
+
+class TemplateUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    prompt: Optional[str] = None
+    icon: Optional[str] = None
+    description: Optional[str] = None
+
+
+@ai_router.get("/templates")
+async def list_templates(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """List all prompt templates (builtins + custom)."""
+    user_id = _get_user_id(credentials)
+    templates = template_manager.list_templates(user_id)
+    return {"templates": templates, "total": len(templates)}
+
+
+@ai_router.post("/templates")
+async def create_template(
+    request: TemplateCreateRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Create a custom prompt template."""
+    user_id = _get_user_id(credentials)
+    template = template_manager.create_template(
+        user_id=user_id,
+        name=request.name,
+        prompt=request.prompt,
+        icon=request.icon,
+        description=request.description,
+    )
+    return template
+
+
+@ai_router.put("/templates/{template_id}")
+async def update_template(
+    template_id: str,
+    request: TemplateUpdateRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Update a custom prompt template."""
+    user_id = _get_user_id(credentials)
+    result = template_manager.update_template(
+        user_id=user_id,
+        template_id=template_id,
+        name=request.name,
+        prompt=request.prompt,
+        icon=request.icon,
+        description=request.description,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Template not found or is a builtin")
+    return result
+
+
+@ai_router.delete("/templates/{template_id}")
+async def delete_template(
+    template_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Delete a custom prompt template."""
+    user_id = _get_user_id(credentials)
+    deleted = template_manager.delete_template(user_id, template_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Template not found or is a builtin")
+    return {"success": True}
+
+
+# ============================================================================
+# PLUGIN MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@ai_router.get("/plugins")
+async def list_plugins(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """List all plugins (built-in + custom)."""
+    from services.plugin_service import plugin_manager
+    user_id = _get_user_id(credentials)
+    return {"plugins": plugin_manager.list_plugins(user_id)}
+
+
+@ai_router.post("/plugins")
+async def create_plugin(
+    request: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Create a custom AI plugin."""
+    from services.plugin_service import plugin_manager
+    user_id = _get_user_id(credentials)
+    plugin = plugin_manager.create_plugin(
+        user_id=user_id,
+        name=request.get("name", "Unnamed Plugin"),
+        description=request.get("description", ""),
+        system_prompt=request.get("system_prompt", ""),
+        icon=request.get("icon", "🔌"),
+        category=request.get("category", "custom"),
+        hooks=request.get("hooks"),
+        config=request.get("config"),
+    )
+    return {"created": plugin}
+
+
+@ai_router.put("/plugins/{plugin_id}/toggle")
+async def toggle_plugin(
+    plugin_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Toggle a plugin's enabled/disabled state."""
+    from services.plugin_service import plugin_manager
+    user_id = _get_user_id(credentials)
+    result = plugin_manager.toggle_plugin(user_id, plugin_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+    return {"plugin": result, "enabled": result.get("enabled", False)}
+
+
+@ai_router.put("/plugins/{plugin_id}")
+async def update_plugin(
+    plugin_id: str,
+    request: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Update a custom plugin."""
+    from services.plugin_service import plugin_manager
+    user_id = _get_user_id(credentials)
+    result = plugin_manager.update_plugin(user_id, plugin_id, request)
+    if not result:
+        raise HTTPException(status_code=404, detail="Plugin not found or is a builtin")
+    return {"updated": result}
+
+
+@ai_router.delete("/plugins/{plugin_id}")
+async def delete_plugin(
+    plugin_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Delete a custom plugin."""
+    from services.plugin_service import plugin_manager
+    user_id = _get_user_id(credentials)
+    deleted = plugin_manager.delete_plugin(user_id, plugin_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Plugin not found or is a builtin")
+    return {"success": True}

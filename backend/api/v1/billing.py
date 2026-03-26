@@ -15,9 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 import uuid as uuid_lib
 
-from backend.database.postgres import get_db
-from backend.models import User, Activity
-from backend.auth.jwt_handler import decode_token, verify_token_type
+from database.postgres import get_db
+from models import User, Activity
+from auth.jwt_handler import decode_token, verify_token_type
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -89,11 +89,7 @@ class PortalRequest(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────
 
-def _get_user_id(credentials: HTTPAuthorizationCredentials) -> str:
-    payload = decode_token(credentials.credentials)
-    if not payload or not verify_token_type(payload, "access"):
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return payload.get("sub", "")
+from api.v1.analytics import _get_user_id
 
 
 async def _get_user(credentials: HTTPAuthorizationCredentials, db: AsyncSession) -> User:
@@ -204,7 +200,7 @@ async def get_usage_metrics(
     # Graph nodes count
     graph_nodes = 0
     try:
-        from backend.models import Entity
+        from models import Entity
         nodes_result = await db.execute(
             select(func.count()).select_from(Entity).where(Entity.user_id == user.id)
         )
@@ -212,12 +208,10 @@ async def get_usage_metrics(
     except Exception:
         pass
 
-    api_calls = min(act_count * 3, 200)
 
     limits = {
         "activities_per_month": plan_info["activities_per_month"],
         "graph_nodes": plan_info["graph_nodes"],
-        "api_calls_per_day": plan_info["api_calls_per_day"],
     }
 
     return {
@@ -225,7 +219,6 @@ async def get_usage_metrics(
         "plan_type": plan_type,
         "usage": {
             "activities_count": act_count,
-            "api_calls_count": api_calls,
             "graph_nodes_count": graph_nodes,
             "storage_bytes": act_count * 512,
         },
@@ -233,7 +226,6 @@ async def get_usage_metrics(
         "warnings": {
             "activities": _warning(act_count, limits["activities_per_month"]),
             "graph_nodes": _warning(graph_nodes, limits["graph_nodes"]),
-            "api_calls": _warning(api_calls, limits["api_calls_per_day"]),
         },
     }
 
@@ -357,7 +349,7 @@ async def create_checkout_session(
             metadata={"user_id": str(user.id), "plan_type": request.plan_type},
         )
         return {"checkout_url": session.url, "session_id": session.id}
-    except stripe.error.StripeError as e:
+    except stripe.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -376,7 +368,7 @@ async def cancel_subscription(
         try:
             stripe.Subscription.modify(stripe_sub_id, cancel_at_period_end=request.at_period_end)
             return {"message": "Subscription will be canceled at the end of the billing period"}
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
     user.tier = "free"
@@ -408,7 +400,7 @@ async def update_subscription(
                 items=[{"id": sub["items"]["data"][0].id, "price": new_price_id}],
                 proration_behavior="create_prorations",
             )
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
     user.tier = FRONTEND_TO_DB_TIER.get(request.new_plan_type, request.new_plan_type)
@@ -436,5 +428,5 @@ async def create_portal_session(
             return_url=request.return_url,
         )
         return {"portal_url": session.url}
-    except stripe.error.StripeError as e:
+    except stripe.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))

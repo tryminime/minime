@@ -35,7 +35,7 @@ cleanup() {
     done
 
     # Kill by PID files
-    for pidfile in /tmp/minime-backend.pid /tmp/minime-website.pid /tmp/minime-desktop.pid; do
+    for pidfile in /tmp/minime-backend.pid /tmp/minime-website.pid /tmp/minime-desktop.pid /tmp/minime-tracker.pid; do
         if [ -f "$pidfile" ]; then
             kill "$(cat "$pidfile")" 2>/dev/null || true
             rm -f "$pidfile"
@@ -99,7 +99,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --help, -h        Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0                             # Default: backend + website"
+            echo "  $0                             # Default: backend + website + desktop"
             echo "  $0 --web                       # Backend + website"
             echo "  $0 --all                       # Everything"
             echo "  $0 --all --tauri               # Everything + Tauri native window"
@@ -121,10 +121,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Default: if nothing specified, start backend + website
+# Default: if nothing specified, start backend + website + desktop
 if [ "$START_BACKEND" = false ] && [ "$START_WEBSITE" = false ] && [ "$START_DESKTOP" = false ]; then
     START_BACKEND=true
     START_WEBSITE=true
+    START_DESKTOP=true
 fi
 
 # ─── Header ─────────────────────────────────────────
@@ -158,7 +159,21 @@ else
 fi
 
 # Always set these
-export PYTHONPATH="$PROJECT_DIR"
+export PYTHONPATH="$PROJECT_DIR:$PROJECT_DIR/backend"
+
+# ─── Increase inotify watch limit (needed by uvicorn, Vite, Next.js) ──
+CURRENT_WATCHES=$(cat /proc/sys/fs/inotify/max_user_watches 2>/dev/null || echo 0)
+if [ "$CURRENT_WATCHES" -lt 524288 ]; then
+    print_info "Current inotify limit: $CURRENT_WATCHES (need 524288)..."
+    if sudo -n sysctl -w fs.inotify.max_user_watches=524288 > /dev/null 2>&1; then
+        print_status "inotify watch limit increased to 524288"
+    else
+        print_warning "inotify limit is low ($CURRENT_WATCHES). Services will use polling mode."
+        print_info "  To fix permanently: sudo sysctl -w fs.inotify.max_user_watches=524288"
+        # Force polling mode for watchfiles (used by uvicorn)
+        export WATCHFILES_FORCE_POLLING=true
+    fi
+fi
 
 #############################################
 # BACKEND STARTUP
@@ -187,14 +202,22 @@ if [ "$START_BACKEND" = true ]; then
 
     # ─── Kill stale processes on ports ────────────────
     print_info "Checking for stale processes..."
-    for PORT in 8000 3000; do
-        STALE_PID=$(lsof -ti:$PORT 2>/dev/null || true)
-        if [ -n "$STALE_PID" ]; then
-            print_warning "Killing stale process on port $PORT (PID: $STALE_PID)"
-            kill -9 $STALE_PID 2>/dev/null || true
-            sleep 1
+    for PORT in 8000 3000 1420 5173; do
+        if command -v fuser &> /dev/null; then
+            fuser -k $PORT/tcp 2>/dev/null || true
+        else
+            STALE_PID=$(lsof -ti:$PORT 2>/dev/null || true)
+            if [ -n "$STALE_PID" ]; then
+                kill -9 $STALE_PID 2>/dev/null || true
+            fi
         fi
     done
+    # Next.js sometimes uses "next-server" or "next-router-worker"
+    pkill -f "next-server" 2>/dev/null || true
+    pkill -f "next-router-worker" 2>/dev/null || true
+    
+    # Clean up Next.js lock file to prevent "another instance" errors
+    rm -f "$PROJECT_DIR/website/.next/dev/lock" 2>/dev/null || true
     print_status "Ports are free"
 
     # ─── Start Infrastructure (Docker containers) ─────
@@ -275,6 +298,23 @@ if [ "$START_BACKEND" = true ]; then
         print_status "Python venv ready (uvicorn available)"
     fi
 
+    # Phase 3: Check / install content intelligence packages
+    print_info "Checking Phase 3 content intelligence packages..."
+    PHASE3_PKGS="pdfplumber python-docx openpyxl python-pptx yake langdetect"
+    MISSING_PKGS=""
+    for pkg in $PHASE3_PKGS; do
+        if ! backend/venv/bin/pip show "$pkg" > /dev/null 2>&1; then
+            MISSING_PKGS="$MISSING_PKGS $pkg"
+        fi
+    done
+    if [ -n "$MISSING_PKGS" ]; then
+        print_warning "Installing missing Phase 3 packages:$MISSING_PKGS"
+        backend/venv/bin/pip install $MISSING_PKGS -q
+        print_status "Phase 3 packages installed"
+    else
+        print_status "Phase 3 packages ready (NLP + document extraction)"
+    fi
+
     # ─── Database Migrations ────────────────────────
     if [ -f "alembic.ini" ]; then
         print_info "Running database migrations..."
@@ -288,6 +328,11 @@ if [ "$START_BACKEND" = true ]; then
         ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone VARCHAR(100) DEFAULT 'UTC';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) NOT NULL DEFAULT 'active';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS preferences JSONB NOT NULL DEFAULT '{}';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_settings JSONB NOT NULL DEFAULT '{}';
+        ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_info JSONB DEFAULT '{}';
     " > /dev/null 2>&1 || print_warning "Could not verify DB columns (non-fatal)"
     print_status "Database columns verified"
 
@@ -347,7 +392,7 @@ if [ "$START_DESKTOP" = true ]; then
     if [ ! -f ".env" ]; then
         print_info "Creating desktop .env file..."
         cat > .env << EOF
-VITE_API_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:8000
 VITE_WS_URL=ws://localhost:8000
 EOF
         print_status "Desktop .env created"
@@ -368,13 +413,20 @@ if [ "$START_BACKEND" = true ]; then
     print_info "Starting FastAPI backend on http://localhost:8000..."
     cd "$PROJECT_DIR"
 
-    # Use the venv binary directly (not `python -m uvicorn` which may fail
-    # if the venv isn't properly activated in the background subshell)
+    # Choose reload strategy based on inotify limit
+    RELOAD_ARGS=""
+    if [ "${WATCHFILES_FORCE_POLLING:-}" = "true" ]; then
+        # inotify limit is low — run without reload to avoid crash
+        print_warning "Running backend without hot-reload (inotify limit too low)"
+        RELOAD_ARGS="--log-level info"
+    else
+        RELOAD_ARGS="--reload --reload-dir backend --reload-include '*.py' --reload-exclude 'venv' --reload-exclude '__pycache__' --log-level info"
+    fi
+
     backend/venv/bin/uvicorn backend.main:app \
         --host 0.0.0.0 \
         --port 8000 \
-        --reload \
-        --log-level info &
+        $RELOAD_ARGS &
     BACKEND_PID=$!
     echo $BACKEND_PID > /tmp/minime-backend.pid
     PIDS+=($BACKEND_PID)
@@ -418,22 +470,43 @@ if [ "$START_WEBSITE" = true ]; then
     cd "$PROJECT_DIR"
 fi
 
-# ─── Start Desktop ─────────────────────────────
-if [ "$START_DESKTOP" = true ]; then
-    cd "$PROJECT_DIR/desktop"
-    if [ "$DESKTOP_MODE" = "tauri" ]; then
-        print_info "Starting Tauri desktop app..."
-        npm run tauri:dev &
+    # Desktop app is now launched at the very end of this script in the foreground
+
+# ─── Start System Activity Tracker ─────────────────
+if [ "$START_BACKEND" = true ]; then
+    TRACKER_SCRIPT="$PROJECT_DIR/desktop/minime-tracker.py"
+    if [ -f "$TRACKER_SCRIPT" ]; then
+        # Kill any existing tracker
+        if [ -f /tmp/minime-tracker.pid ]; then
+            kill "$(cat /tmp/minime-tracker.pid)" 2>/dev/null || true
+            rm -f /tmp/minime-tracker.pid
+        fi
+
+        print_info "Starting system activity tracker..."
+
+        # Install GNOME extension if not linked
+        EXT_DIR="$HOME/.local/share/gnome-shell/extensions/minime-tracker@minime"
+        EXT_SRC="$PROJECT_DIR/desktop/gnome-extension/minime-tracker@minime"
+        if [ ! -d "$EXT_DIR" ] && [ -d "$EXT_SRC" ]; then
+            mkdir -p "$HOME/.local/share/gnome-shell/extensions"
+            ln -sfn "$EXT_SRC" "$EXT_DIR"
+            print_info "MiniMe GNOME extension installed (enable after next login)"
+        fi
+
+        # Build tracker args — pass email/password if set in .env
+        TRACKER_ARGS="--api-url http://localhost:8000"
+        if [ -n "${MINIME_EMAIL:-}" ] && [ -n "${MINIME_PASSWORD:-}" ]; then
+            TRACKER_ARGS="$TRACKER_ARGS --email $MINIME_EMAIL --password $MINIME_PASSWORD"
+        fi
+
+        python3 "$TRACKER_SCRIPT" $TRACKER_ARGS > /tmp/minime-tracker.log 2>&1 &
+        TRACKER_PID=$!
+        PIDS+=($TRACKER_PID)
+        print_status "System activity tracker started (PID: $TRACKER_PID)"
+        print_info "  Log: /tmp/minime-tracker.log"
     else
-        print_info "Starting Vite dev server on http://localhost:5173..."
-        npm run dev &
+        print_warning "System activity tracker not found at $TRACKER_SCRIPT"
     fi
-    DESKTOP_PID=$!
-    echo $DESKTOP_PID > /tmp/minime-desktop.pid
-    PIDS+=($DESKTOP_PID)
-    print_status "Desktop started in ${DESKTOP_MODE} mode (PID: $DESKTOP_PID)"
-    sleep 2
-    cd "$PROJECT_DIR"
 fi
 
 # ─── Summary ────────────────────────────────────
@@ -443,25 +516,34 @@ print_section "MiniMe is Running!"
 if [ "$START_BACKEND" = true ]; then
     echo -e "${GREEN}Backend API:${NC}      http://localhost:8000"
     echo -e "${GREEN}API Docs:${NC}         http://localhost:8000/docs"
+    echo -e "${GREEN}Content API:${NC}      http://localhost:8000/api/v1/content"
+    echo -e "${GREEN}Documents API:${NC}    http://localhost:8000/api/v1/documents"
     echo -e "${GREEN}PostgreSQL:${NC}       localhost:5432"
     echo -e "${GREEN}Redis:${NC}            localhost:6379"
+    echo -e "${GREEN}Qdrant:${NC}           http://localhost:6333"
 fi
 
 if [ "$START_WEBSITE" = true ]; then
     echo -e "${GREEN}Website:${NC}          http://localhost:3000"
+    echo -e "${GREEN}Knowledge Library:${NC} http://localhost:3000/dashboard/knowledge"
 fi
 
 if [ "$START_DESKTOP" = true ]; then
-    if [ "$DESKTOP_MODE" = "tauri" ]; then
-        echo -e "${GREEN}Desktop App:${NC}      Tauri native window"
-    else
-        echo -e "${GREEN}Desktop (Vite):${NC}   http://localhost:5173"
-    fi
+    echo -e "${GREEN}Desktop App:${NC}      Tauri native window"
 fi
 
 echo ""
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
-echo ""
 
-# Wait for all background processes (cleanup runs via trap)
-wait "${PIDS[@]}" 2>/dev/null || true
+if [ "$START_DESKTOP" = true ]; then
+    echo ""
+    print_info "Launching MiniMe desktop app (Tauri)..."
+    cd "$PROJECT_DIR/desktop"
+    # Launch in foreground — ties the terminal to the Tauri app
+    if npm run tauri:dev; then
+        echo "Desktop app closed."
+    fi
+else
+    # Wait for all background processes (cleanup runs via trap)
+    wait "${PIDS[@]}" 2>/dev/null || true
+fi

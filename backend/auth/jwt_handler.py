@@ -2,14 +2,15 @@
 JWT token handling for authentication.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
+import uuid as uuid_lib
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import structlog
 
-from backend.config import settings
+from config import settings
 
 logger = structlog.get_logger()
 
@@ -31,13 +32,14 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     to_encode = data.copy()
     
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(timezone.utc),
+        "jti": str(uuid_lib.uuid4()),
         "type": "access"
     })
     
@@ -52,7 +54,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
 
 def create_refresh_token(data: Dict[str, Any]) -> str:
     """
-    Create a JWT refresh token (longer expiration).
+    Create a JWT refresh token (longer expiration — 7 days default).
     
     Args:
         data: Payload data to encode in token
@@ -61,12 +63,44 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
         Encoded JWT refresh token
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
     
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),
-        "type": "refresh"
+        "iat": datetime.now(timezone.utc),
+        "jti": str(uuid_lib.uuid4()),
+        "type": "refresh",
+        "long_lived": False,
+    })
+    
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM
+    )
+    
+    return encoded_jwt
+
+
+def create_long_lived_refresh_token(data: Dict[str, Any]) -> str:
+    """
+    Create a long-lived JWT refresh token for "remember this device" (90 days).
+    
+    Args:
+        data: Payload data to encode in token
+        
+    Returns:
+        Encoded long-lived JWT refresh token
+    """
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.JWT_REMEMBER_DEVICE_EXPIRE_DAYS)
+    
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "jti": str(uuid_lib.uuid4()),
+        "type": "refresh",
+        "long_lived": True,  # flag so refresh endpoint can preserve long lifetime
     })
     
     encoded_jwt = jwt.encode(
@@ -177,6 +211,7 @@ async def get_current_user(
         "sub": user_id,      # raw JWT claim
         "email": payload.get("email"),
         "username": payload.get("username"),
+        "is_superadmin": payload.get("is_superadmin", False),
     }
 
 

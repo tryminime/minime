@@ -6,7 +6,7 @@ import { getAPIClient } from '../api';
 export interface GraphNode {
     id: string;
     label: string;
-    type: 'PERSON' | 'PROJECT' | 'SKILL' | 'ORGANIZATION' | 'DOCUMENT';
+    type: 'PERSON' | 'PROJECT' | 'TOPIC' | 'ORGANIZATION' | 'INSTITUTION' | 'TOOL' | 'PAPER' | 'DATASET' | 'VENUE' | 'SKILL' | 'DOCUMENT';
     x?: number;
     y?: number;
     size: number;
@@ -15,6 +15,8 @@ export interface GraphNode {
         created_at?: string;
         updated_at?: string;
         description?: string;
+        org_type?: string;
+        industry?: string;
         [key: string]: any;
     };
 }
@@ -24,6 +26,7 @@ export interface GraphEdge {
     target: string;
     weight: number;
     label?: string;
+    rel_type?: string;  // e.g. LEARNED_FROM, USED_TOGETHER, AFFILIATED_WITH
 }
 
 export interface GraphData {

@@ -7,6 +7,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useLocalBackend } from '@/lib/hooks/useLocalBackend';
 import { InstallPromptBanner } from '@/components/InstallPromptBanner';
+import { UsageWarningBanner } from '@/components/UsageWarningBanner';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import RestoreDialog from '@/components/RestoreDialog';
+import { ChatPopup } from '@/components/ChatPopup';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import Link from 'next/link';
 import {
     LayoutDashboard,
@@ -26,8 +31,11 @@ import {
     Heart,
     Briefcase,
     Target,
+    BookOpen,
+    CheckSquare,
+    Shield,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const navItems = [
     { name: 'Overview', href: '/dashboard/overview', icon: LayoutDashboard },
@@ -35,6 +43,8 @@ const navItems = [
     { name: 'Enrichment', href: '/dashboard/enrichment', icon: Sparkles },
     { name: 'Productivity', href: '/dashboard/productivity', icon: TrendingUp },
     { name: 'Graph Explorer', href: '/dashboard/graph', icon: Network },
+    { name: 'Knowledge', href: '/dashboard/knowledge', icon: BookOpen },
+    { name: 'Tasks', href: '/dashboard/tasks', icon: CheckSquare },
     { name: 'Collaboration', href: '/dashboard/collaboration', icon: Users },
     { name: 'Skills', href: '/dashboard/skills', icon: Zap },
     { name: 'Wellness', href: '/dashboard/wellness', icon: Heart },
@@ -53,17 +63,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    if (isLoading) {
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated) {
+            router.push('/auth/login');
+        }
+    }, [isLoading, isAuthenticated, router]);
+
+    if (isLoading || !isAuthenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-shell)' }}>
                 <div className="w-12 h-12 rounded-full border-4 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin"></div>
             </div>
         );
-    }
-
-    if (!isAuthenticated) {
-        router.push('/auth/login');
-        return null;
     }
 
     return (
@@ -127,13 +138,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                                     key={item.href}
                                     href={item.href}
                                     onClick={() => setSidebarOpen(false)}
-                                    className={`ds-nav-item ${isActive ? 'active' : ''}`}
+                                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-indigo-500/10 text-indigo-500' : 'text-gray-500 hover:bg-black/5 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-gray-100'}`}
                                 >
-                                    <Icon className="w-5 h-5" style={{ color: isActive ? 'var(--color-accent)' : 'var(--color-muted)' }} />
+                                    <Icon className="w-5 h-5 flex-shrink-0" style={{ color: isActive ? 'var(--color-accent)' : 'var(--color-muted)' }} />
                                     <span>{item.name}</span>
                                 </Link>
                             );
                         })}
+
+                        {/* Admin Link (Conditional) */}
+                        {user?.is_superadmin && (
+                            <Link
+                                href="/dashboard/admin"
+                                onClick={() => setSidebarOpen(false)}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10`}
+                            >
+                                <Shield className="w-5 h-5 flex-shrink-0" />
+                                <span>Admin Panel</span>
+                            </Link>
+                        )}
                     </nav>
 
                     {/* User profile */}
@@ -194,11 +217,43 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                             {navItems.find((item) => item.href === pathname)?.name || 'Dashboard'}
                         </h2>
                     </div>
+                    <div className="flex items-center gap-4">
+                        <ThemeToggle />
+                    </div>
                 </header>
 
-                {/* Page content */}
-                <main className="flex-1 overflow-auto p-6">
-                    {children}
+                {/* Offline banner — shown when network is unavailable */}
+                <OfflineBanner />
+
+                {/* Usage warning — shown when approaching plan limits */}
+                <UsageWarningBanner />
+
+                <main className="flex-1 overflow-auto p-6 flex flex-col relative">
+                    <div className="flex-1">
+                        {children}
+                    </div>
+                    {/* Compact Dashboard Footer */}
+                    <div className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                        <p className="text-sm flex items-center justify-center flex-wrap gap-2" style={{ color: 'var(--color-muted)' }}>
+                            <span>© 2026 MiniMe</span>
+                            <span>·</span>
+                            <Link href="/legal/privacy" className="hover:opacity-80 transition-colors" style={{ color: 'var(--color-text)' }}>Privacy</Link>
+                            <span>·</span>
+                            <Link href="/legal/terms" className="hover:opacity-80 transition-colors" style={{ color: 'var(--color-text)' }}>Terms</Link>
+                            <span>·</span>
+                            <span>Made with <span className="text-red-500">♥</span> in SF</span>
+                        </p>
+                        <div className="flex items-center gap-4">
+                            <a href="https://twitter.com/tryminime" target="_blank" rel="noreferrer" aria-label="Twitter"
+                                className="hover:text-indigo-400 transition-colors" style={{ color: 'var(--color-muted)' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" /></svg>
+                            </a>
+                            <a href="https://github.com/tryminime" target="_blank" rel="noreferrer" aria-label="GitHub"
+                                className="hover:opacity-80 transition-colors" style={{ color: 'var(--color-muted)' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" /><path d="M9 18c-4.51 2-5-2-7-2" /></svg>
+                            </a>
+                        </div>
+                    </div>
                 </main>
             </div>
 
@@ -206,6 +261,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             {!isDetecting && !isRunning && (
                 <InstallPromptBanner onRetry={retry} isRetrying={isDetecting} />
             )}
+
+            {/* Floating AI Chat Popup — available on all dashboard pages */}
+            <ChatPopup />
+
+            {/* Cloud Restore Dialog — shown after login when cloud backup exists */}
+            <RestoreDialog />
         </div>
     );
 }

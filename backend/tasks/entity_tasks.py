@@ -8,12 +8,12 @@ Tasks:
 - Sync to Neo4j
 """
 
-from backend.config.celery_config import celery_app
-from backend.database.postgres import SessionLocal
-from backend.models import Entity
-from backend.services.embedding_service import embedding_service
-from backend.services.qdrant_entity_service import qdrant_entity_service
-from backend.services.entity_deduplication import deduplication_service
+from config.celery_config import celery_app
+from database.postgres import SessionLocal
+from models import Entity
+from services.embedding_service import embedding_service
+from services.qdrant_entity_service import qdrant_entity_service
+from services.entity_deduplication import deduplication_service
 from typing import Optional
 from uuid import UUID
 import structlog
@@ -157,7 +157,7 @@ def sync_entity_to_neo4j(self, entity_id: str):
         
         # TODO: Implement Neo4j sync when authentication is set up
         try:
-            from backend.database.neo4j_client import get_neo4j_client
+            from database.neo4j_client import get_neo4j_client
             neo4j = get_neo4j_client()
             
             # Create or update entity node

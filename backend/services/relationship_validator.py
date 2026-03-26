@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import logging
 
-from backend.models.graph_models import RelationshipType, NodeType
+from models.graph_models import RelationshipType, NodeType
 
 logger = logging.getLogger(__name__)
 

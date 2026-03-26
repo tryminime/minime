@@ -7,8 +7,8 @@ import pytest
 import uuid
 from unittest.mock import Mock, patch, MagicMock
 
-from backend.services.relationship_validator import RelationshipValidator, relationship_validator
-from backend.models.graph_models import NodeType, RelationshipType
+from services.relationship_validator import RelationshipValidator, relationship_validator
+from models.graph_models import NodeType, RelationshipType
 
 
 class TestRelationshipValidator:

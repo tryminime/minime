@@ -8,7 +8,7 @@ import numpy as np
 import networkx as nx
 from unittest.mock import Mock, patch, MagicMock
 
-from backend.services.node2vec_service import Node2VecService, node2vec_service
+from services.node2vec_service import Node2VecService, node2vec_service
 
 
 class TestNode2VecService:

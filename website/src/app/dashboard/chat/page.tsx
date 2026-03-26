@@ -5,15 +5,18 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
     Send, Bot, User, Loader2, Sparkles, RefreshCw, Copy, Check,
     Plus, Trash2, MessageSquare, Download, Search, X, ChevronDown,
-    Cpu, Zap, BookOpen,
+    Cpu, Zap, BookOpen, Puzzle,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     useConversations, useConversation, useDeleteConversation,
     useExportConversation, useModelInfo, useAISearch, parseSSEChunk,
-    ConversationSummary, Citation,
+    useProactiveInsights, useMilestones,
+    ConversationSummary, Citation, ProactiveInsight, Milestone,
 } from '@/lib/hooks/useAIChat';
+import { Trophy, Lightbulb, ChevronRight, Award } from 'lucide-react';
 import { getAPIClient } from '@/lib/api';
+import { VoiceInputButton, SpeakButton, PluginGallery } from '@/components/FeaturePanels';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -96,12 +99,15 @@ function ConversationItem({
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{conv.message_count} messages</p>
             </div>
-            <button
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500 transition-all shrink-0"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDelete(); } }}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500 transition-all shrink-0 cursor-pointer"
             >
                 <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            </div>
         </button>
     );
 }
@@ -112,6 +118,108 @@ const SUGGESTED_PROMPTS = [
     'Which skills am I building most?',
     'How is my focus score trending?',
 ];
+
+// ── Insights Banner ───────────────────────────────────────────────────────────
+
+function InsightsBanner() {
+    const { data } = useProactiveInsights();
+    const [expanded, setExpanded] = useState(false);
+    const insights = data?.insights ?? [];
+    if (!insights.length) return null;
+
+    const severityColors: Record<string, string> = {
+        info: 'bg-blue-50 border-blue-200 text-blue-800',
+        success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+        warning: 'bg-amber-50 border-amber-200 text-amber-800',
+        alert: 'bg-red-50 border-red-200 text-red-800',
+    };
+
+    return (
+        <div className="border-b border-gray-100 bg-white">
+            <button
+                onClick={() => setExpanded(v => !v)}
+                className="w-full flex items-center gap-2 px-5 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+            >
+                <Lightbulb className="w-3.5 h-3.5 text-blue-500" />
+                <span>{insights.length} Insight{insights.length > 1 ? 's' : ''} available</span>
+                <ChevronDown className={`w-3 h-3 ml-auto text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+            {expanded && (
+                <div className="px-4 pb-3 space-y-2">
+                    {insights.slice(0, 5).map(insight => (
+                        <div
+                            key={insight.id}
+                            className={`flex items-start gap-2 px-3 py-2 rounded-lg border text-xs ${severityColors[insight.dismissed ? 'info' : (insight.priority > 0.7 ? 'warning' : 'info')]}`}
+                        >
+                            <span className="text-base flex-shrink-0">{insight.category_icon}</span>
+                            <div className="min-w-0">
+                                <p className="font-semibold">{insight.title}</p>
+                                <p className="opacity-80 mt-0.5 line-clamp-2">{insight.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Milestones Banner ─────────────────────────────────────────────────────────
+
+function MilestonesBanner() {
+    const { data } = useMilestones();
+    const [expanded, setExpanded] = useState(false);
+    const unlocked = data?.unlocked ?? [];
+    const all = data?.milestones ?? [];
+    if (!all.length) return null;
+
+    return (
+        <div className="border-b border-gray-100 bg-white">
+            <button
+                onClick={() => setExpanded(v => !v)}
+                className="w-full flex items-center gap-2 px-5 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+            >
+                <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                <span>{unlocked.length}/{all.length} Milestones Unlocked</span>
+                <ChevronDown className={`w-3 h-3 ml-auto text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+            {expanded && (
+                <div className="px-4 pb-3">
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                        {all.map(m => (
+                            <div
+                                key={m.id}
+                                className={`flex-shrink-0 w-44 px-3 py-2 rounded-lg border text-xs ${
+                                    m.unlocked
+                                        ? 'bg-amber-50 border-amber-200'
+                                        : 'bg-gray-50 border-gray-200 opacity-60'
+                                }`}
+                            >
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-base">{m.emoji}</span>
+                                    <span className={`font-semibold truncate ${m.unlocked ? 'text-amber-800' : 'text-gray-600'}`}>
+                                        {m.title}
+                                    </span>
+                                </div>
+                                <div className="mt-1.5 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full rounded-full transition-all ${
+                                            m.unlocked ? 'bg-amber-500' : 'bg-gray-400'
+                                        }`}
+                                        style={{ width: `${Math.min(m.progress, 100)}%` }}
+                                    />
+                                </div>
+                                <p className="text-[10px] mt-1 text-gray-500">
+                                    {m.current_value}/{m.threshold} ({m.progress.toFixed(0)}%)
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 // ── Search Panel ──────────────────────────────────────────────────────────────
 
@@ -172,8 +280,10 @@ function ChatPageInner() {
     const [isStreaming, setIsStreaming] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [showSearch, setShowSearch] = useState(false);
+    const [showPlugins, setShowPlugins] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     // Hooks
@@ -206,9 +316,24 @@ function ChatPageInner() {
         }
     }, [activeConv, conversationId]);
 
-    // Scroll to bottom
+    // Pre-fill prompt from URL ?prompt= (e.g. "Ask AI about this" links)
+    const promptParam = searchParams.get('prompt');
+    const promptSubmittedRef = useRef(false);
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (promptParam && !promptSubmittedRef.current && !isStreaming) {
+            promptSubmittedRef.current = true;
+            setInput(promptParam);
+            // Optional: focus the input when pre-filled
+            setTimeout(() => inputRef.current?.focus(), 100);
+        }
+    }, [promptParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Scroll to bottom (container-only — avoids scrolling the whole page)
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
     }, [messages]);
 
     const startNewChat = () => {
@@ -272,8 +397,9 @@ function ChatPageInner() {
         try {
             // Get the auth token from the API client storage
             const token = localStorage.getItem('minime_auth_token') || '';
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-            const resp = await fetch('/api/ai/chat/stream', {
+            const resp = await fetch(`${apiBase}/api/ai/chat/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -299,7 +425,7 @@ function ChatPageInner() {
                     rawBuffer += decoder.decode(value, { stream: true });
 
                     // Parse SSE lines from the buffer
-                    const { chunks, done: sseEnd, conversationId: cid } = parseSSEChunk(rawBuffer);
+                    const { chunks, done: sseEnd, conversationId: cid, citations: sseCitations } = parseSSEChunk(rawBuffer);
                     if (cid && !newConvId) {
                         newConvId = cid;
                         setConversationId(cid);
@@ -316,6 +442,9 @@ function ChatPageInner() {
                         // Clear consumed lines from buffer (keep partial last line)
                         const lastNL = rawBuffer.lastIndexOf('\n');
                         rawBuffer = lastNL >= 0 ? rawBuffer.slice(lastNL + 1) : rawBuffer;
+                    }
+                    if (sseCitations && sseCitations.length > 0) {
+                        citations = sseCitations;
                     }
                     if (sseEnd) break;
                 }
@@ -348,20 +477,9 @@ function ChatPageInner() {
         // Refresh conversation list
         refetchConversations();
         queryClient.invalidateQueries({ queryKey: ['ai-conversation', newConvId] });
+        queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     };
 
-    const fallbackDemo = async (text: string, assistantId: string) => {
-        const demoText = getDemoResponse(text);
-        let acc = '';
-        for (const char of demoText) {
-            acc += char;
-            const current = acc;
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: current } : m));
-            await new Promise(r => setTimeout(r, 12));
-        }
-        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, streaming: false } : m));
-        setIsStreaming(false);
-    };
 
     const handleCopy = (text: string, id: string) => {
         navigator.clipboard.writeText(text);
@@ -447,6 +565,13 @@ function ChatPageInner() {
                             </button>
                         )}
                         <button
+                            onClick={() => setShowPlugins(v => !v)}
+                            className={`p-2 rounded-lg transition-colors ${showPlugins ? 'bg-purple-100 text-purple-600' : 'hover:bg-gray-100 text-gray-500'}`}
+                            title="AI Plugins"
+                        >
+                            <Puzzle className="w-4 h-4" />
+                        </button>
+                        <button
                             onClick={startNewChat}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             title="New conversation"
@@ -456,8 +581,12 @@ function ChatPageInner() {
                     </div>
                 </div>
 
+                {/* Insights & Milestones Banners */}
+                <InsightsBanner />
+                <MilestonesBanner />
+
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 bg-gray-50">
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-6 py-5 space-y-6 bg-gray-50">
                     {messages.map(msg => (
                         <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                             {msg.role === 'assistant' && (
@@ -483,12 +612,15 @@ function ChatPageInner() {
                                 </div>
                                 {msg.role === 'assistant' && msg.content && !msg.streaming && (
                                     <>
-                                        <button
-                                            onClick={() => handleCopy(msg.content, msg.id)}
-                                            className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs flex items-center gap-1 px-2 py-0.5 rounded text-gray-400 hover:text-gray-700"
-                                        >
-                                            {copiedId === msg.id ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
-                                        </button>
+                                        <div className="mt-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleCopy(msg.content, msg.id)}
+                                                className="text-xs flex items-center gap-1 px-2 py-0.5 rounded text-gray-400 hover:text-gray-700"
+                                            >
+                                                {copiedId === msg.id ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                                            </button>
+                                            <SpeakButton text={msg.content} />
+                                        </div>
                                         {msg.citations && msg.citations.length > 0 && (
                                             <CitationList citations={msg.citations} />
                                         )}
@@ -510,7 +642,7 @@ function ChatPageInner() {
                                 <button
                                     key={prompt}
                                     onClick={() => handleSubmit(prompt)}
-                                    className="text-xs px-3 py-2 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                                    className="text-xs px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
                                 >
                                     {prompt}
                                 </button>
@@ -536,6 +668,7 @@ function ChatPageInner() {
                                 style={{ maxHeight: '120px' }}
                             />
                         </div>
+                        <VoiceInputButton onTranscript={(text) => { setInput(prev => prev ? prev + ' ' + text : text); }} />
                         <button
                             type="submit"
                             disabled={!input.trim() || isStreaming}
@@ -549,24 +682,17 @@ function ChatPageInner() {
                     </p>
                 </div>
             </div>
+
+            {/* ── Plugin Sidebar ────────────────────────────── */}
+            {showPlugins && (
+                <aside className="w-64 flex-none border-l border-gray-200 bg-white p-4 overflow-y-auto">
+                    <PluginGallery />
+                </aside>
+            )}
         </div>
     );
 }
 
-// ── Demo fallback ─────────────────────────────────────────────────────────────
-
-function getDemoResponse(query: string): string {
-    const q = query.toLowerCase();
-    if (q.includes('productivity') || q.includes('productive') || q.includes('peak'))
-        return 'Based on your recent activity data, your most productive hours are 9–11 AM with an average deep focus score of 8.4/10. VS Code (45%), Terminal (20%), and documentation sites (15%) dominate those peak windows. I\'d recommend blocking these hours for your most important tasks.';
-    if (q.includes('week') || q.includes('summary') || q.includes('summar'))
-        return '📊 This week (Feb 15–21): You tracked 37 activities totaling 18h 7m. Top apps: VS Code (5.8h), Chrome (2.2h), Google Meet (2.0h). Focus score: 56/100 · Productivity: 67/100. Key achievement: 12 deep-work sessions completed (9.4h).';
-    if (q.includes('skill') || q.includes('learning') || q.includes('build'))
-        return 'Your top skills this month by activity time: Python (22h), TypeScript (15h), React (11h), DevOps tooling (8h). Fastest-growing: Rust usage is up 40% over the last 2 weeks. Check the Learning Paths tab in Graph Explorer for curated resources on these areas.';
-    if (q.includes('focus') || q.includes('score') || q.includes('trend'))
-        return 'Your focus score is 8.2/10 — up 0.4 points from last week ↑. You averaged 4.5 hours of deep work per day compared to 3.8h last week. Best streak: 3 consecutive deep-work blocks on Feb 18. Suggestion: try scheduling your 2 PM meeting later to preserve your afternoon focus window.';
-    return 'I\'ve analyzed your recent activity patterns. You\'ve been most active during morning hours, with a clear focus on development tasks across 12 applications. Your workflow is well-balanced between coding, research, and communication. What specific area would you like me to dig into?';
-}
 
 // ── Page wrapper ──────────────────────────────────────────────────────────────
 

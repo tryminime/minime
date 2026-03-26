@@ -1,0 +1,58 @@
+Supabase (PostgreSQL):
+Project Url: https://ncmfchqmphapjrbcwngc.supabase.co
+Publishable Key: sb_publishable_d9f3zsrzSvaSs1vXlCpb7g_8CmpG9c6
+Direct connection string: postgresql://postgres:Sr1n@g@r@1!@#$@db.ncmfchqmphapjrbcwngc.supabase.co:5432/postgres
+
+
+Upstash (Redis)"
+
+REDIS_URL="rediss://default:gQAAAAAAARoRAAIncDFjYWIyZTNhMzc2N2E0MWRmYTFkZjQyYmQxYmE3MDMxNnAxNzIyMDk@flexible-skylark-72209.upstash.io:6379"
+
+3. Neo4j AuraDB (Graph):
+# Wait 60 seconds before connecting using these details, or login to https://console.neo4j.io to validate the Aura Instance is available
+NEO4J_URI=neo4j+s://ebe9ff32.databases.neo4j.io
+NEO4J_USERNAME=ebe9ff32
+NEO4J_PASSWORD=sNC6LfYFBYkMQcEtuYzKSoGo1nXD4aoKDF98rNZySok
+NEO4J_DATABASE=ebe9ff32
+AURA_INSTANCEID=ebe9ff32
+AURA_INSTANCENAME=MiniMe_neo4j
+
+
+4. Qdrant Cloud (Vector DB):
+Name: auto-generated-api-key
+Cluster ID: d2abe3dc-8142-4ce0-b65f-490b228d01de
+API Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.Zlc5mtUP-f5XyHhaAlcW56B0OPSy1Ye_X6xdjDbp3rw
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import PointStruct, Document
+
+client = QdrantClient(
+    url="https://d2abe3dc-8142-4ce0-b65f-490b228d01de.us-east-1-1.aws.cloud.qdrant.io:6333",
+    api_key="<your-token>",
+    cloud_inference=True,
+)
+
+points = [
+    PointStruct(
+        id=1,
+        payload={"topic": "cooking", "type": "dessert"},
+        vector=Document(
+            text="Recipe for baking chocolate chip cookies requires flour, sugar, eggs, and chocolate chips.",
+            model="sentence-transformers/all-minilm-l6-v2"
+        )
+    )
+]
+
+client.upsert(collection_name="", points=points)
+
+points = client.query_points(collection_name="", query=Document(
+    text="Recipe for baking chocolate chip cookies requires flour",
+    model="sentence-transformers/all-minilm-l6-v2"
+))
+
+print(points)
+
+
+
+
+
+

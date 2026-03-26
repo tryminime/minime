@@ -16,6 +16,7 @@ class NodeType(str, Enum):
     PROJECT = "PROJECT"
     DATASET = "DATASET"
     INSTITUTION = "INSTITUTION"
+    ORGANIZATION = "ORGANIZATION"  # Generic org: company, media, cloud, etc.
     TOOL = "TOOL"
     VENUE = "VENUE"
 
@@ -33,6 +34,9 @@ class RelationshipType(str, Enum):
     PUBLISHED_AT = "PUBLISHED_AT"
     RELATED_TO = "RELATED_TO"
     DEPENDS_ON = "DEPENDS_ON"
+    # Activity-inferred relationship types
+    LEARNED_FROM = "LEARNED_FROM"      # User learned from an org/domain
+    USED_TOGETHER = "USED_TOGETHER"    # Two entities co-occur in the same session
 
 
 # ============================================================================
@@ -157,7 +161,7 @@ class VenueNode(BaseModel):
 # RELATIONSHIP SCHEMAS
 # ============================================================================
 
-class RelationshipProperties(Base Model):
+class RelationshipProperties(BaseModel):
     """Base properties for all relationships."""
     weight: float = 1.0
     confidence: float = 1.0

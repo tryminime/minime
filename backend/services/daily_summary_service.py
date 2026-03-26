@@ -19,10 +19,10 @@ from anthropic import Anthropic, APIError, APITimeoutError
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.analytics_models import DailySummary, DailyMetrics
-from backend.services.productivity_metrics_service import ProductivityMetricsService
-from backend.database.redis_client import get_redis_client
-from backend.config.settings import settings
+from models.analytics_models import DailySummary, DailyMetrics
+from services.productivity_metrics_service import ProductivityMetricsService
+from database.redis_client import get_redis_client
+from config.settings import settings
 
 logger = structlog.get_logger(__name__)
 

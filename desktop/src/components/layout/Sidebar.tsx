@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, BarChart3, FolderKanban, FileText, Brain, ListTodo, MessageSquare, Settings, HelpCircle, Menu, X } from 'lucide-react'
+import { Home, BarChart3, FolderKanban, FileText, Brain, BookOpen, ListTodo, MessageSquare, Settings, HelpCircle, Menu, X } from 'lucide-react'
 
 interface SidebarProps {
     onToggleDark: () => void
@@ -16,6 +16,7 @@ export default function Sidebar({ onToggleDark }: SidebarProps) {
         { icon: FolderKanban, label: 'Projects', path: '/projects' },
         { icon: FileText, label: 'Papers', path: '/papers' },
         { icon: Brain, label: 'Knowledge Graph', path: '/knowledge-graph' },
+        { icon: BookOpen, label: 'Knowledge', path: '/knowledge' },
         { icon: ListTodo, label: 'Tasks', path: '/tasks' },
         { icon: MessageSquare, label: 'AI Chat', path: '/chat' },
         { icon: Settings, label: 'Settings', path: '/settings' },

@@ -6,7 +6,7 @@ Tests Louvain algorithm, community queries, and statistics.
 import pytest
 from unittest.mock import Mock, patch
 
-from backend.services.community_service import CommunityService, community_service
+from services.community_service import CommunityService, community_service
 
 
 class TestCommunityService:

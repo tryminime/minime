@@ -26,14 +26,27 @@ export interface WearableDataResponse {
     total_data_points: number;
 }
 
+const DEFAULT_PROVIDERS: WearableProvider[] = [
+    { provider: 'fitbit', name: 'Fitbit', connected: false, device_name: null, last_synced: null, is_active: false },
+    { provider: 'oura', name: 'Oura Ring', connected: false, device_name: null, last_synced: null, is_active: false },
+    { provider: 'apple_health', name: 'Apple Health', connected: false, device_name: null, last_synced: null, is_active: false },
+];
+
 export function useWearableStatus() {
     const api = getAPIClient();
 
     return useQuery({
         queryKey: ['wearables', 'status'],
-        queryFn: () => api.get<WearableProvider[]>('/api/v1/wearables/status'),
+        queryFn: async () => {
+            try {
+                return await api.get<WearableProvider[]>('/api/v1/wearables/status');
+            } catch {
+                // Return default disconnected providers on error (e.g., CORS)
+                return DEFAULT_PROVIDERS;
+            }
+        },
         staleTime: 5 * 60 * 1000,
-        retry: 2,
+        retry: 1,
     });
 }
 

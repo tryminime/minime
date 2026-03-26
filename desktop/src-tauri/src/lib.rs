@@ -12,6 +12,7 @@ mod commands;
 mod screenshot;
 mod tray;
 mod focus_timer;
+mod local_search;
 #[cfg(test)]
 mod tests;
 mod setup;
@@ -26,15 +27,66 @@ use database::Database;
 use sync::SyncManager;
 use privacy::PrivacyFilter;
 use polling::PollingTask;
-use input::{StubInputMonitor, InputMonitor, FocusDetector};
+use input::{LinuxInputMonitor, InputMonitor, FocusDetector};
 use settings::SettingsManager;
 use ai_chat::AIChatManager;
 use screenshot::ScreenshotManager;
 use focus_timer::FocusTimer;
 use tray::TrackingState;
 use commands::*;
+use local_search::{LocalSearch, ContentRecord};
+
+// ── Phase 2 Sync Encryption Tauri Commands ────────────────────────────────────
+
+/// Encrypt a string payload with AES-256-GCM.
+/// Key is derived from SYNC_ENCRYPTION_SECRET env var (falls back to dev secret).
+/// Returns base64-encoded ciphertext.
+#[tauri::command]
+fn encrypt_sync_payload(data: String) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    let key = derive_sync_key();
+    let encryptor = encryption::Encryptor::from_key(key)
+        .map_err(|_| "Failed to create encryptor".to_string())?;
+    encryptor.encrypt_string(&data)
+        .map_err(|_| "Encryption failed".to_string())
+}
+
+/// Decrypt a base64-encoded AES-256-GCM payload.
+#[tauri::command]
+fn decrypt_sync_payload(data: String) -> Result<String, String> {
+    let key = derive_sync_key();
+    let encryptor = encryption::Encryptor::from_key(key)
+        .map_err(|_| "Failed to create encryptor".to_string())?;
+    encryptor.decrypt_string(&data)
+        .map_err(|_| "Decryption failed".to_string())
+}
+
+/// Return the last 8 hex chars of SHA-256(sync key) for display/verification.
+#[tauri::command]
+fn get_sync_key_fingerprint() -> String {
+    use sha2::{Sha256, Digest};
+    let key = derive_sync_key();
+    let hash = Sha256::digest(&key);
+    let hex = hex::encode(hash);
+    hex[hex.len().saturating_sub(8)..].to_uppercase()
+}
+
+fn derive_sync_key() -> Vec<u8> {
+    use sha2::{Sha256, Digest};
+    let secret = std::env::var("SYNC_ENCRYPTION_SECRET")
+        .unwrap_or_else(|_| "minime-dev-sync-secret-change-in-prod".to_string());
+    // PBKDF2-equivalent: Sha256(secret + salt) * 1 — simplified for Tauri side.
+    // Production: use ring's PBKDF2 for 100k iterations matching the backend.
+    let mut hasher = Sha256::new();
+    hasher.update(b"minime_sync_v1");
+    hasher.update(secret.as_bytes());
+    hasher.finalize().to_vec()
+}
+
 
 // ── Application state ────────────────────────────────────────────────────────
+
+struct AppLocalSearch(std::sync::Mutex<LocalSearch>);
 
 struct AppState {
     activity_manager: Arc<TokioMutex<ActivityManager>>,
@@ -173,8 +225,17 @@ async fn login(
     };
     let mut sync_mgr = SyncManager::new(api_url);
     let token = sync_mgr.login(&email, &password).await?;
-    let mut sync = state.sync_manager.lock().unwrap();
-    sync.set_token(token.clone());
+    
+    // Set token in memory
+    {
+        let mut sync = state.sync_manager.lock().unwrap();
+        sync.set_token(token.clone());
+    }
+    
+    // Save token to local database for auto-login
+    let db = state.database.lock().await;
+    let _ = db.set_setting("auth_token", &token);
+    
     Ok(token)
 }
 
@@ -263,6 +324,43 @@ async fn get_autostart(app: AppHandle) -> Result<bool, String> {
         .map_err(|e| format!("Failed to check autostart state: {}", e))
 }
 
+// ── Local content search commands ────────────────────────────────────────────
+
+#[tauri::command]
+fn index_content(
+    app: AppHandle,
+    id: String,
+    title: String,
+    url: String,
+    doc_type: String,
+    keyphrases: Vec<String>,
+    entities: Vec<String>,
+    text_snippet: String,
+    word_count: u32,
+    created_at: String,
+) -> Result<(), String> {
+    let search = app.state::<AppLocalSearch>();
+    let ls = search.0.lock().map_err(|e| e.to_string())?;
+    ls.index(&ContentRecord {
+        id, title, url, doc_type, keyphrases, entities,
+        text_snippet, word_count, created_at,
+    })
+}
+
+#[tauri::command]
+fn search_local(app: AppHandle, query: String, limit: Option<usize>) -> Result<Vec<local_search::SearchResult>, String> {
+    let search = app.state::<AppLocalSearch>();
+    let ls = search.0.lock().map_err(|e| e.to_string())?;
+    ls.search(&query, limit.unwrap_or(20))
+}
+
+#[tauri::command]
+fn list_recent_content(app: AppHandle, limit: Option<usize>) -> Result<Vec<local_search::SearchResult>, String> {
+    let search = app.state::<AppLocalSearch>();
+    let ls = search.0.lock().map_err(|e| e.to_string())?;
+    ls.list_recent(limit.unwrap_or(20))
+}
+
 // ── Backend health check & auto-start ────────────────────────────────────────
 
 /// Check if the backend is running; if not, start it.
@@ -331,14 +429,20 @@ pub fn run() {
             // ── Services ──────────────────────────────────────────
             let api_url = std::env::var("API_URL")
                 .unwrap_or_else(|_| "http://localhost:8000".to_string());
-            let sync_manager = SyncManager::new(api_url.clone());
-            let settings_manager = SettingsManager::new(api_url.clone());
+            let mut sync_manager = SyncManager::new(api_url.clone());
+            let mut settings_manager = SettingsManager::new(api_url.clone());
             let ai_chat_manager = AIChatManager::new(api_url.clone());
             let screenshot_manager = ScreenshotManager::new(app_dir.clone());
             let privacy_filter = PrivacyFilter::new();
             let focus_timer = FocusTimer::new();
-            let input_monitor: Box<dyn InputMonitor> = Box::new(StubInputMonitor::new());
+            let input_monitor: Box<dyn InputMonitor> = Box::new(LinuxInputMonitor::new());
             let focus_detector = FocusDetector::new();
+            
+            // ── Auto-login ────────────────────────────────────────
+            if let Ok(Some(token)) = database.get_setting("auth_token") {
+                log::info!("Auto-login: authentication token found");
+                sync_manager.set_token(token);
+            }
 
             // ── Arc wrappers ──────────────────────────────────────
             let activity_manager_arc = Arc::new(TokioMutex::new(activity_manager));
@@ -355,6 +459,11 @@ pub fn run() {
 
             let focus_timer_arc = Arc::new(TokioMutex::new(focus_timer));
             let polling_task_arc = Arc::new(TokioMutex::new(Some(polling_task)));
+
+            // ── Local content search (SQLite FTS5) ───────────────
+            let local_search = LocalSearch::open(app.handle())
+                .expect("Failed to initialize local search DB");
+            app.manage(AppLocalSearch(std::sync::Mutex::new(local_search)));
 
             app.manage(AppState {
                 activity_manager: activity_manager_arc.clone(),
@@ -384,19 +493,30 @@ pub fn run() {
                 tray::update_tray_tooltip(&handle2, 0.0, 0.0, 0);
             });
 
-            // ── Auto-start activity tracking (2s after init) ──────
+            // ── Auto-start activity tracking + polling (2s after init) ──
             let manager_arc2 = activity_manager_arc.clone();
+            let polling_arc2 = polling_task_arc.clone();
             let handle3 = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                let mut manager = manager_arc2.lock().await;
-                if let Err(e) = manager.start() {
-                    log::warn!("Auto-start tracking failed: {}", e);
-                } else {
-                    TrackingState::Tracking.store();
-                    tray::refresh_tray(&handle3, false);
-                    log::info!("Activity tracking auto-started");
+                {
+                    let mut manager = manager_arc2.lock().await;
+                    if let Err(e) = manager.start() {
+                        log::warn!("Auto-start tracking failed: {}", e);
+                        return; // Don't start polling if tracker failed
+                    }
                 }
+                // Also start the PollingTask so events are buffered to SQLite
+                {
+                    let polling = polling_arc2.lock().await;
+                    if let Some(ref task) = *polling {
+                        task.start().await;
+                        log::info!("PollingTask auto-started");
+                    }
+                }
+                TrackingState::Tracking.store();
+                tray::refresh_tray(&handle3, false);
+                log::info!("Activity tracking + polling auto-started");
             });
 
             // ── Periodic tray tooltip refresh (every 60s) ────────
@@ -415,6 +535,37 @@ pub fn run() {
                         db.get_unsynced_count().unwrap_or(0)
                     };
                     tray::update_tray_tooltip(&handle4, tracked_hours, 0.0, unsynced);
+                }
+            });
+
+            // ── Auto-sync to backend (every 3 minutes) ───────────
+            let handle_sync = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(180)).await;
+                    
+                    let state = handle_sync.state::<AppState>();
+                    let (activities, api_url, token_opt) = {
+                        let db = state.database.lock().await;
+                        let sync = state.sync_manager.lock().unwrap();
+                        let acts = db.get_unsynced_activities(100).unwrap_or_default();
+                        (acts, sync.api_url.clone(), sync.access_token.clone())
+                    };
+
+                    if !activities.is_empty() {
+                        if let Some(token) = token_opt {
+                            let mut tmp_sync = crate::sync::SyncManager::new(api_url);
+                            tmp_sync.set_token(token);
+                            if let Ok(response) = tmp_sync.sync_activities(activities.clone()).await {
+                                let mut db = state.database.lock().await;
+                                let ids: Vec<String> = activities.iter().map(|a| a.id.clone()).collect();
+                                let _ = db.mark_activities_synced(&ids);
+                                log::info!("Auto-synced {} activities", response.synced);
+                            } else {
+                                log::warn!("Auto-sync failed");
+                            }
+                        }
+                    }
                 }
             });
 
@@ -547,6 +698,14 @@ pub fn run() {
             get_focus_status,
             get_focus_analytics,
             get_focus_sessions,
+            // Local content search commands
+            index_content,
+            search_local,
+            list_recent_content,
+            // Phase 2 Sync Encryption commands
+            encrypt_sync_payload,
+            decrypt_sync_payload,
+            get_sync_key_fingerprint,
             // Setup commands
             setup::check_backend_status,
             setup::check_ollama_installed,

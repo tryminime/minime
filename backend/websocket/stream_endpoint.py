@@ -8,8 +8,8 @@ from uuid import UUID
 import asyncio
 import structlog
 
-from backend.auth.jwt_handler import decode_token, verify_token_type
-from backend.websocket.activity_stream import activity_stream_manager
+from auth.jwt_handler import decode_token, verify_token_type
+from websocket.activity_stream import activity_stream_manager
 
 logger = structlog.get_logger()
 router = APIRouter()

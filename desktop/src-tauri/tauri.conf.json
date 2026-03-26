@@ -60,11 +60,7 @@
     "createUpdaterArtifacts": false
   },
   "plugins": {
-    "autostart": {
-      "args": [
-        "--minimized"
-      ]
-    },
+    "autostart": null,
     "updater": {
       "endpoints": [
         "https://github.com/tryminime/MiniMe/releases/latest/download/latest.json"

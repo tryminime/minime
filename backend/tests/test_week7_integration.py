@@ -13,11 +13,11 @@ import sys
 import time
 sys.path.insert(0, '/home/ansari/Documents/MiniMe')
 
-from backend.services.nlp_service import nlp_service
-from backend.services.entity_normalizer import entity_normalizer
-from backend.tasks.ner_worker import extract_text_blob, find_or_create_entity
-from backend.models import Activity, Entity, EntityOccurrence
-from backend.database.postgres import SessionLocal
+from services.nlp_service import nlp_service
+from services.entity_normalizer import entity_normalizer
+from tasks.ner_worker import extract_text_blob, find_or_create_entity
+from models import Activity, Entity, EntityOccurrence
+from database.postgres import SessionLocal
 from uuid import uuid4, UUID
 from datetime import datetime
 
@@ -124,7 +124,7 @@ def test_model_imports():
     print("TEST 4: Model Imports")
     print("="*60)
     
-    from backend.models import User, Activity, Entity, EntityOccurrence, AuditLog
+    from models import User, Activity, Entity, EntityOccurrence, AuditLog
     
     models = [
         ('User', User),
@@ -150,31 +150,31 @@ def test_service_imports():
     services = []
     
     try:
-        from backend.services.nlp_service import nlp_service
+        from services.nlp_service import nlp_service
         services.append(('NLP Service', nlp_service))
     except Exception as e:
         print(f"✗ NLP Service failed: {e}")
     
     try:
-        from backend.services.entity_normalizer import entity_normalizer
+        from services.entity_normalizer import entity_normalizer
         services.append(('Entity Normalizer', entity_normalizer))
     except Exception as e:
         print(f"✗ Entity Normalizer failed: {e}")
     
     try:
-        from backend.services.event_bus import EventBus
+        from services.event_bus import EventBus
         services.append(('Event Bus', EventBus))
     except Exception as e:
         print(f"✗ Event Bus failed: {e}")
     
     try:
-        from backend.config.celery_config import celery_app
+        from config.celery_config import celery_app
         services.append(('Celery App', celery_app))
     except Exception as e:
         print(f"✗ Celery App failed: {e}")
     
     try:
-        from backend.tasks.ner_worker import process_activity_ner
+        from tasks.ner_worker import process_activity_ner
         services.append(('NER Worker', process_activity_ner))
     except Exception as e:
         print(f"✗ NER Worker failed: {e}")

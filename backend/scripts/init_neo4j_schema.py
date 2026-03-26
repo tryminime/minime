@@ -10,7 +10,7 @@ import os
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from backend.config.neo4j_config import get_neo4j_config
+from config.neo4j_config import get_neo4j_config
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -92,7 +92,7 @@ def _verify_schema(config):
         
         # Expected counts
         expected_constraints = 8  # One per node type
-        expected_indexes = 30+    # Multiple per type
+        expected_indexes = 30    # Multiple per type
         
         if len(constraints) >= expected_constraints:
             logger.info(f"   ✅ Constraints OK ({len(constraints)} >= {expected_constraints})")

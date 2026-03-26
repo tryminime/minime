@@ -1,0 +1,2585 @@
+## backend/models.py
+52: FunctionDef to_dict
+142: FunctionDef to_dict
+200: FunctionDef to_dict
+234: FunctionDef to_dict
+344: FunctionDef to_dict
+389: FunctionDef to_dict
+
+## backend/main.py
+28: AsyncFunctionDef lifespan
+129: AsyncFunctionDef add_request_id_and_timing
+159: AsyncFunctionDef validation_exception_handler
+176: AsyncFunctionDef general_exception_handler
+209: AsyncFunctionDef health_check
+219: AsyncFunctionDef readiness_check
+261: AsyncFunctionDef root
+360: AsyncFunctionDef broadcast_ws_message
+374: AsyncFunctionDef ws_dashboard
+
+## backend/check_imports.py
+5: FunctionDef get_imports
+
+## backend/models/analytics_models.py
+60: FunctionDef to_dict
+110: FunctionDef to_dict
+170: FunctionDef to_dict
+234: FunctionDef to_dict
+278: FunctionDef to_dict
+
+## backend/models/integration_models.py
+33: FunctionDef __repr__
+36: FunctionDef to_dict
+
+## backend/models/user_models.py
+36: FunctionDef __repr__
+39: FunctionDef to_dict
+
+## backend/tasks/inference_tasks.py
+18: FunctionDef infer_relationships_weekly
+
+## backend/tasks/celery_app.py
+39: FunctionDef process_activity
+66: FunctionDef batch_process_activities
+87: FunctionDef extract_entities
+110: FunctionDef update_knowledge_graph
+130: FunctionDef calculate_analytics
+150: FunctionDef generate_weekly_summary
+171: FunctionDef detect_burnout
+
+## backend/tasks/embedding_tasks.py
+17: FunctionDef generate_embeddings_weekly
+
+## backend/tasks/centrality_tasks.py
+17: FunctionDef compute_centrality_metrics_weekly
+
+## backend/tasks/entity_tasks.py
+25: FunctionDef generate_entity_embedding
+79: FunctionDef scan_entity_duplicates
+140: FunctionDef sync_entity_to_neo4j
+210: FunctionDef batch_generate_embeddings
+
+## backend/tasks/scheduled_report_task.py
+26: FunctionDef get_report_preferences
+37: FunctionDef set_report_preferences
+46: FunctionDef _should_send
+73: FunctionDef _build_report_html
+130: FunctionDef send_report_email
+163: FunctionDef process_scheduled_reports
+
+## backend/tasks/analytics_tasks.py
+PARSE_ERROR: unindent does not match any outer indentation level (<unknown>, line 161)
+
+## backend/tasks/community_tasks.py
+17: FunctionDef detect_communities_weekly
+
+## backend/tasks/ner_worker.py
+30: FunctionDef process_activity_ner
+148: FunctionDef extract_text_blob
+210: FunctionDef find_or_create_entity
+267: FunctionDef determine_source_type
+288: FunctionDef test_ner_on_text
+
+## backend/tasks/wearable_sync.py
+14: FunctionDef sync_wearable_data
+27: AsyncFunctionDef _sync_all_wearables
+
+## backend/auth/jwt_handler.py
+21: FunctionDef create_access_token
+55: FunctionDef create_refresh_token
+85: FunctionDef create_long_lived_refresh_token
+115: FunctionDef decode_token
+137: FunctionDef verify_token_type
+151: FunctionDef get_user_id_from_token
+168: AsyncFunctionDef get_current_user
+218: AsyncFunctionDef get_current_user_optional
+239: AsyncFunctionDef get_dev_user
+
+## backend/auth/password.py
+12: FunctionDef hash_password
+25: FunctionDef verify_password
+39: FunctionDef validate_password_strength
+
+## backend/database/qdrant_client.py
+22: AsyncFunctionDef init_qdrant
+34: AsyncFunctionDef close_qdrant
+42: FunctionDef get_qdrant_client
+49: AsyncFunctionDef ensure_collections
+71: AsyncFunctionDef upsert_vector
+103: AsyncFunctionDef search_similar
+143: AsyncFunctionDef delete_vector
+161: AsyncFunctionDef get_collection_info
+
+## backend/database/cloud_db_clients.py
+38: AsyncFunctionDef get_cloud_pg_engine
+63: AsyncFunctionDef get_cloud_redis
+87: AsyncFunctionDef get_cloud_neo4j
+126: AsyncFunctionDef get_cloud_qdrant
+145: AsyncFunctionDef close_all_cloud_clients
+
+## backend/database/postgres.py
+23: AsyncFunctionDef init_db
+51: AsyncFunctionDef close_db
+59: AsyncFunctionDef get_db
+
+## backend/database/postgres_client.py
+31: FunctionDef get_db
+50: FunctionDef init_db
+55: FunctionDef close_db
+
+## backend/database/neo4j_client.py
+17: AsyncFunctionDef init_neo4j
+33: AsyncFunctionDef close_neo4j
+41: FunctionDef get_neo4j_driver
+48: AsyncFunctionDef execute_query
+65: AsyncFunctionDef execute_write
+86: AsyncFunctionDef create_node
+123: AsyncFunctionDef create_relationship
+160: AsyncFunctionDef find_nodes
+
+## backend/database/redis_client.py
+18: AsyncFunctionDef init_redis
+34: AsyncFunctionDef close_redis
+42: FunctionDef get_redis_client
+49: AsyncFunctionDef cache_set
+65: AsyncFunctionDef cache_get
+85: AsyncFunctionDef cache_delete
+98: AsyncFunctionDef cache_exists
+103: AsyncFunctionDef increment_counter
+117: AsyncFunctionDef rate_limit_check
+156: AsyncFunctionDef publish_message
+171: AsyncFunctionDef subscribe_channel
+
+## backend/database/init_db.py
+14: FunctionDef init_db
+
+## backend/infrastructure/event_sourcing.py
+30: FunctionDef __init__
+48: FunctionDef to_dict
+64: FunctionDef __init__
+88: FunctionDef __init__
+93: FunctionDef apply
+100: FunctionDef raise_event
+115: FunctionDef get_pending_events
+118: FunctionDef clear_pending
+121: FunctionDef to_snapshot
+125: FunctionDef from_snapshot
+136: FunctionDef __init__
+143: FunctionDef apply_activity_recorded
+148: FunctionDef apply_activity_tagged
+153: FunctionDef apply_activity_deleted
+157: FunctionDef to_snapshot
+168: FunctionDef from_snapshot
+180: FunctionDef __init__
+185: FunctionDef apply_setting_changed
+196: FunctionDef apply_settings_reset
+200: FunctionDef to_snapshot
+206: FunctionDef from_snapshot
+221: FunctionDef __init__
+228: FunctionDef append
+243: FunctionDef append_batch
+250: FunctionDef get_events
+259: FunctionDef get_all_events
+275: FunctionDef save_snapshot
+281: FunctionDef get_snapshot
+285: FunctionDef subscribe
+291: FunctionDef subscribe_all
+295: FunctionDef get_stream_length
+298: FunctionDef get_stats
+316: FunctionDef __init__
+321: FunctionDef handle
+330: FunctionDef __init__
+334: FunctionDef handle_activity_recorded
+338: FunctionDef handle_activity_deleted
+342: FunctionDef get_count
+349: FunctionDef __init__
+353: FunctionDef handle_setting_changed
+362: FunctionDef get_log
+383: FunctionDef __init__
+387: FunctionDef register_projection
+392: FunctionDef handle
+437: FunctionDef _load_aggregate
+458: FunctionDef replay_all
+474: FunctionDef _command_to_event_type
+
+## backend/tests/test_collaboration_skills.py
+27: FunctionDef mock_db
+32: FunctionDef mock_neo4j
+52: FunctionDef mock_redis
+57: FunctionDef service
+66: AsyncFunctionDef test_calculate_collaboration_score
+86: AsyncFunctionDef test_get_top_collaborators
+123: AsyncFunctionDef test_calculate_network_diversity
+151: AsyncFunctionDef test_weekly_collaboration
+178: FunctionDef mock_db
+183: FunctionDef mock_neo4j
+196: FunctionDef mock_redis
+201: FunctionDef service
+209: FunctionDef test_hours_to_mastery_level
+217: FunctionDef test_calculate_progress_to_next_level
+232: AsyncFunctionDef test_get_top_skills
+271: AsyncFunctionDef test_calculate_mastery_levels
+305: AsyncFunctionDef test_analyze_growth_trajectories
+337: AsyncFunctionDef test_get_skill_recommendations
+365: AsyncFunctionDef test_weekly_skills
+
+## backend/tests/conftest.py
+20: FunctionDef event_loop
+32: AsyncFunctionDef db_session
+67: FunctionDef client
+77: FunctionDef mock_user_data
+87: FunctionDef mock_activity_data
+101: FunctionDef mock_entity_data
+
+## backend/tests/test_centrality_benchmarks.py
+17: FunctionDef service
+25: FunctionDef test_degree_centrality_performance_small_graph
+54: FunctionDef test_target_50k_nodes_under_30s
+89: FunctionDef test_orchestrator_overhead
+120: FunctionDef test_memory_efficiency_projection
+150: FunctionDef test_complexity_analysis
+183: FunctionDef test_optimization_strategies
+
+## backend/tests/test_week8_integration.py
+25: FunctionDef test_entity_creation
+101: FunctionDef test_deduplication_service
+128: FunctionDef test_entity_merge
+179: FunctionDef test_api_endpoints
+214: FunctionDef test_background_tasks
+246: FunctionDef cleanup_test_entities
+269: FunctionDef main
+
+## backend/tests/test_node2vec_service.py
+18: FunctionDef service
+27: FunctionDef sample_graph
+34: FunctionDef test_initialization
+42: FunctionDef test_initialization_custom_params
+59: FunctionDef test_extract_subgraph_basic
+89: FunctionDef test_extract_subgraph_with_filters
+110: FunctionDef test_compute_graph_hash
+128: FunctionDef test_train_embeddings_success
+177: FunctionDef test_train_embeddings_empty_graph
+195: FunctionDef test_train_embeddings_caching
+234: FunctionDef test_store_embeddings_qdrant
+258: FunctionDef test_store_embeddings_neo4j_reduced
+289: FunctionDef test_store_embeddings_neo4j_full
+318: FunctionDef test_find_similar_nodes
+364: FunctionDef test_find_similar_nodes_with_threshold
+396: FunctionDef test_compute_all_similarities
+418: FunctionDef test_clear_cache
+433: FunctionDef test_global_instance_exists
+438: FunctionDef test_global_instance_defaults
+
+## backend/tests/test_relationship_validation.py
+18: FunctionDef validator
+22: FunctionDef test_validate_authored_relationship_valid
+31: FunctionDef test_validate_authored_relationship_invalid
+40: FunctionDef test_validate_cites_relationship_valid
+49: FunctionDef test_validate_uses_relationship_multiple_valid
+64: FunctionDef test_validate_invalid_relationship_type
+73: FunctionDef test_validate_invalid_node_type
+82: FunctionDef test_compute_weight_authored_first_author
+91: FunctionDef test_compute_weight_authored_middle_author
+100: FunctionDef test_compute_weight_authored_last_author
+109: FunctionDef test_compute_weight_collaboration
+118: FunctionDef test_compute_weight_citation
+128: FunctionDef test_compute_weight_works_on
+138: FunctionDef test_compute_weight_uses_primary
+147: FunctionDef test_compute_weight_on_topic
+156: FunctionDef test_compute_confidence_single_source_activity
+162: FunctionDef test_compute_confidence_single_source_api
+168: FunctionDef test_compute_confidence_single_source_inference
+174: FunctionDef test_compute_confidence_multiple_sources
+181: FunctionDef test_compute_confidence_user_confirmed_boost
+191: FunctionDef test_compute_confidence_inferred_penalty
+201: FunctionDef test_add_temporal_properties_new
+209: FunctionDef test_add_temporal_properties_update
+219: FunctionDef test_validate_required_properties_authored_valid
+229: FunctionDef test_validate_required_properties_authored_missing
+239: FunctionDef test_validate_required_properties_collaboration_valid
+248: FunctionDef test_validate_required_properties_collaboration_missing
+258: FunctionDef test_enrich_relationship_properties_complete
+281: FunctionDef test_enrich_relationship_properties_defaults
+294: FunctionDef test_source_list_conversion
+309: FunctionDef validator
+312: FunctionDef test_all_relationship_types_defined
+331: FunctionDef test_all_relationship_types_have_weight_logic
+355: FunctionDef test_global_validator_exists
+360: FunctionDef test_global_validator_functional
+
+## backend/tests/test_ner.py
+22: FunctionDef test_nlp_extraction
+46: FunctionDef test_entity_normalization
+97: FunctionDef test_end_to_end
+128: FunctionDef main
+
+## backend/tests/test_embeddings.py
+19: FunctionDef test_single_embedding
+51: FunctionDef test_batch_embeddings
+79: FunctionDef test_similarity
+117: FunctionDef test_performance
+152: FunctionDef main
+
+## backend/tests/test_graph_ingestion.py
+23: FunctionDef test_retry_on_transient_error_success_first_try
+33: FunctionDef test_retry_on_transient_error_success_after_retry
+47: FunctionDef test_retry_on_transient_error_max_retries_exceeded
+57: FunctionDef test_retry_on_database_error_no_retry
+72: FunctionDef service
+77: FunctionDef mock_session
+82: FunctionDef test_ingest_entity_person_success
+111: FunctionDef test_ingest_entity_paper_success
+138: FunctionDef test_ingest_entity_with_retry
+167: FunctionDef test_ingest_batch_success
+195: FunctionDef test_ingest_batch_partial_failure
+227: FunctionDef test_ingest_relationship_success
+245: FunctionDef test_ingest_batch_relationships_success
+265: FunctionDef test_map_type_specific_properties_person
+283: FunctionDef test_map_type_specific_properties_paper
+301: FunctionDef test_get_node_success
+323: FunctionDef test_get_node_not_found
+335: FunctionDef test_delete_node_success
+347: FunctionDef test_delete_node_not_found
+364: FunctionDef service
+367: FunctionDef test_all_node_types_have_canonical_name
+383: FunctionDef test_none_values_filtered
+
+## backend/tests/test_graph_services.py
+21: FunctionDef service
+26: FunctionDef mock_neo4j_session
+33: FunctionDef test_extract_subgraph
+56: FunctionDef test_generate_embeddings
+68: FunctionDef test_store_embeddings_qdrant
+86: FunctionDef test_find_similar_nodes
+106: FunctionDef test_compute_embeddings_with_cache
+133: FunctionDef service
+138: FunctionDef mock_neo4j_session
+145: FunctionDef test_detect_communities
+160: FunctionDef test_get_communities
+187: FunctionDef test_calculate_modularity
+199: FunctionDef test_find_community_bridges
+222: FunctionDef service
+227: FunctionDef mock_neo4j_session
+234: FunctionDef test_compute_degree_centrality
+246: FunctionDef test_compute_pagerank
+259: FunctionDef test_compute_all_metrics
+284: FunctionDef client
+291: FunctionDef auth_headers
+296: FunctionDef test_get_node_details_integration
+306: FunctionDef test_export_graph_integration
+315: FunctionDef test_rate_limiting
+326: FunctionDef test_embedding_generation_performance
+342: FunctionDef test_centrality_computation_performance
+
+## backend/tests/test_week7_integration.py
+25: FunctionDef test_text_extraction
+49: FunctionDef test_ner_extraction
+73: FunctionDef test_entity_normalization_and_storage
+121: FunctionDef test_model_imports
+144: FunctionDef test_service_imports
+188: FunctionDef main
+
+## backend/tests/test_node2vec_benchmarks.py
+19: FunctionDef service
+27: FunctionDef create_test_graph
+43: FunctionDef test_small_graph_100_nodes
+63: FunctionDef test_medium_graph_1k_nodes
+83: FunctionDef test_large_graph_10k_nodes
+104: FunctionDef test_embedding_storage_qdrant
+127: FunctionDef test_similarity_computation_batch
+149: FunctionDef test_caching_speedup
+183: FunctionDef test_hyperparameter_impact
+215: FunctionDef test_memory_efficiency
+231: FunctionDef test_scalability_analysis
+264: FunctionDef test_optimization_strategies
+
+## backend/tests/test_relationship_inference.py
+22: FunctionDef service
+30: FunctionDef test_initialization
+36: FunctionDef test_compute_weight_frequency
+55: FunctionDef test_compute_weight_recency_decay
+77: FunctionDef test_compute_weight_context_strength
+97: FunctionDef test_compute_weight_bounds
+119: FunctionDef test_compute_confidence_method_base
+154: FunctionDef test_compute_confidence_weight_boost
+179: FunctionDef test_compute_confidence_entity_quality_boost
+201: FunctionDef test_compute_confidence_context_boosts
+247: FunctionDef test_infer_from_co_occurrence_person_paper
+272: FunctionDef test_infer_from_co_occurrence_person_person
+291: FunctionDef test_infer_from_co_occurrence_below_threshold
+309: FunctionDef test_infer_citations_from_paper_content_title_match
+337: FunctionDef test_infer_citations_from_paper_content_author_match
+361: FunctionDef test_infer_citations_from_paper_content_doi_match
+384: FunctionDef test_infer_citations_multiple_signals
+412: FunctionDef test_infer_citations_no_self_citation
+429: FunctionDef test_infer_tool_usage_from_text
+449: FunctionDef test_infer_tool_usage_primary
+468: FunctionDef test_apply_confidence_thresholds_default
+483: FunctionDef test_apply_confidence_thresholds_custom
+503: FunctionDef test_batch_infer_from_activity_log
+542: FunctionDef test_all_relationship_types_mapped
+550: FunctionDef test_mappings_have_valid_relationship_types
+563: FunctionDef test_global_instance_exists
+568: FunctionDef test_global_instance_has_defaults
+
+## backend/tests/test_auth.py
+9: FunctionDef test_register_success
+20: FunctionDef test_register_weak_password
+33: FunctionDef test_login_success
+47: FunctionDef test_get_current_user
+69: FunctionDef test_refresh_token
+90: FunctionDef test_logout
+
+## backend/tests/test_daily_summary.py
+26: FunctionDef mock_db
+36: FunctionDef mock_redis
+44: FunctionDef mock_metrics_service
+62: FunctionDef mock_anthropic
+82: FunctionDef service
+96: AsyncFunctionDef test_generate_daily_summary_success
+128: AsyncFunctionDef test_generate_daily_summary_updates_existing
+151: AsyncFunctionDef test_generate_daily_summary_no_metrics
+167: AsyncFunctionDef test_get_daily_summary_from_cache
+192: AsyncFunctionDef test_get_daily_summary_not_found
+212: FunctionDef test_build_daily_summary_prompt
+250: FunctionDef test_markdown_to_html_basic
+263: FunctionDef test_markdown_to_html_lists
+279: FunctionDef test_extract_metadata
+303: FunctionDef test_generate_fallback_summary
+313: AsyncFunctionDef test_generate_with_llm_timeout
+326: AsyncFunctionDef test_generate_with_llm_api_error
+
+## backend/tests/test_productivity_metrics.py
+PARSE_ERROR: unindent does not match any outer indentation level (<unknown>, line 187)
+
+## backend/tests/test_graph_api.py
+18: FunctionDef client
+23: FunctionDef mock_user
+32: FunctionDef auth_headers
+42: FunctionDef test_get_node_details
+78: FunctionDef test_get_node_neighbors
+110: FunctionDef test_get_experts_global
+144: FunctionDef test_get_experts_by_topic
+169: FunctionDef test_recommend_collaborators
+208: FunctionDef test_get_learning_paths
+247: FunctionDef test_list_communities
+282: FunctionDef test_search_embeddings
+325: FunctionDef test_export_graph
+368: FunctionDef test_pagination_params
+378: FunctionDef test_invalid_pagination
+393: FunctionDef test_rate_limiting
+409: FunctionDef test_node_not_found
+425: FunctionDef test_unauthorized_access
+433: FunctionDef test_internal_server_error
+
+## backend/tests/test_centrality_service.py
+17: FunctionDef service
+22: FunctionDef mock_session
+29: FunctionDef test_initialization
+35: FunctionDef test_project_user_graph_success
+60: FunctionDef test_project_user_graph_with_filters
+83: FunctionDef test_drop_graph
+97: FunctionDef test_compute_degree_centrality_success
+131: FunctionDef test_compute_degree_centrality_with_existing_graph
+158: FunctionDef test_compute_betweenness_centrality
+187: FunctionDef test_compute_closeness_centrality
+216: FunctionDef test_compute_eigenvector_centrality
+246: FunctionDef test_compute_pagerank_weighted
+277: FunctionDef test_compute_pagerank_unweighted
+311: FunctionDef test_compute_all_metrics_success
+348: FunctionDef test_compute_all_metrics_partial_failure
+385: FunctionDef test_compute_all_metrics_selective
+412: FunctionDef test_error_handling
+439: FunctionDef test_global_instance_exists
+
+## backend/tests/test_load.py
+18: FunctionDef on_start
+32: FunctionDef get_node_details
+50: FunctionDef get_node_neighbors
+66: FunctionDef get_experts
+86: FunctionDef get_topic_experts
+107: FunctionDef get_collaborator_recommendations
+128: FunctionDef get_communities
+149: FunctionDef search_embeddings
+171: FunctionDef get_learning_paths
+194: FunctionDef export_graph
+221: FunctionDef on_test_start
+233: FunctionDef on_test_stop
+
+## backend/tests/test_community_service.py
+16: FunctionDef service
+21: FunctionDef mock_session
+28: FunctionDef test_initialization
+36: FunctionDef test_detect_communities_success
+76: FunctionDef test_detect_communities_with_existing_graph
+105: FunctionDef test_project_graph
+125: FunctionDef test_drop_graph
+137: FunctionDef test_get_communities
+176: FunctionDef test_get_community_by_id
+201: FunctionDef test_get_community_by_id_not_found
+222: FunctionDef test_calculate_modularity
+245: FunctionDef test_get_community_statistics
+281: FunctionDef test_get_community_statistics_empty
+298: FunctionDef test_get_node_community
+315: FunctionDef test_get_node_community_not_found
+329: FunctionDef test_find_community_bridges
+372: FunctionDef test_error_handling
+391: FunctionDef test_global_instance_exists
+
+## backend/tests/test_weekly_report.py
+25: FunctionDef mock_db
+35: FunctionDef mock_redis
+43: FunctionDef mock_metrics_service
+69: FunctionDef mock_collaboration_service
+83: FunctionDef mock_skill_service
+96: FunctionDef mock_anthropic
+110: FunctionDef service
+134: AsyncFunctionDef test_generate_weekly_report_success
+162: AsyncFunctionDef test_generate_weekly_report_adjusts_to_monday
+180: AsyncFunctionDef test_get_weekly_report_from_cache
+208: AsyncFunctionDef test_generate_all_sections
+231: FunctionDef test_time_analytics_section
+249: FunctionDef test_productivity_section
+274: AsyncFunctionDef test_trends_section
+310: FunctionDef test_build_report_markdown
+
+## backend/schemas/analytics_schemas.py
+59: FunctionDef validate_range
+446: FunctionDef validate_dates
+
+## backend/websocket/activity_stream.py
+20: FunctionDef __init__
+30: AsyncFunctionDef connect
+63: AsyncFunctionDef disconnect
+92: AsyncFunctionDef broadcast_activity
+150: AsyncFunctionDef broadcast_entity
+186: AsyncFunctionDef send_heartbeat
+201: AsyncFunctionDef handle_client_message
+248: FunctionDef get_connection_count
+252: FunctionDef get_user_connection_count
+256: FunctionDef get_stats
+
+## backend/websocket/manager.py
+27: FunctionDef __init__
+36: AsyncFunctionDef connect
+55: AsyncFunctionDef disconnect
+67: AsyncFunctionDef send_personal_message
+95: AsyncFunctionDef broadcast_to_room
+107: AsyncFunctionDef get_active_users
+111: AsyncFunctionDef get_connection_count
+150: AsyncFunctionDef notify_activity_created
+158: AsyncFunctionDef notify_entity_extracted
+166: AsyncFunctionDef notify_sync_status
+
+## backend/websocket/stream_endpoint.py
+18: AsyncFunctionDef get_current_user_from_websocket
+29: AsyncFunctionDef activity_stream_endpoint
+103: AsyncFunctionDef send_heartbeats
+127: AsyncFunctionDef get_stream_stats
+
+## backend/monitoring/health_dashboard.py
+39: FunctionDef __init__
+48: FunctionDef register_service
+62: FunctionDef update_service_status
+81: FunctionDef check_database
+114: FunctionDef get_health
+196: FunctionDef liveness
+206: FunctionDef readiness
+230: FunctionDef get_health_history
+234: FunctionDef get_uptime_report
+252: FunctionDef _format_uptime
+
+## backend/monitoring/sentry_config.py
+28: FunctionDef __init__
+58: FunctionDef init
+107: FunctionDef set_user
+120: FunctionDef set_tag
+129: FunctionDef set_context
+137: FunctionDef add_breadcrumb
+163: FunctionDef capture_exception
+196: FunctionDef capture_message
+223: FunctionDef start_transaction
+238: FunctionDef finish_transaction
+245: FunctionDef _before_send
+252: FunctionDef _scrub_pii
+267: FunctionDef _mask_email
+276: FunctionDef get_stats
+
+## backend/monitoring/prometheus_metrics.py
+29: FunctionDef __init__
+35: FunctionDef inc
+39: FunctionDef get
+43: FunctionDef collect
+53: FunctionDef __init__
+59: FunctionDef set
+63: FunctionDef inc
+67: FunctionDef dec
+71: FunctionDef get
+75: FunctionDef collect
+87: FunctionDef __init__
+100: FunctionDef observe
+104: FunctionDef collect
+133: FunctionDef __init__
+193: FunctionDef collect_all
+208: FunctionDef to_prometheus_text
+212: FunctionDef _emit_counter
+220: FunctionDef _emit_gauge
+228: FunctionDef _emit_histogram
+
+## backend/scripts/seed_real_data.py
+72: FunctionDef random_duration
+85: FunctionDef generate_activities
+177: FunctionDef get_testuser_id
+183: FunctionDef clear_existing_activities
+192: FunctionDef insert_activities
+230: FunctionDef seed_goals
+257: FunctionDef seed_entities
+290: FunctionDef main
+
+## backend/scripts/init_db.py
+20: AsyncFunctionDef create_tables
+
+## backend/scripts/init_neo4j_schema.py
+PARSE_ERROR: invalid syntax (<unknown>, line 95)
+
+## backend/api/graphql_schema.py
+220: FunctionDef __init__
+225: FunctionDef load
+231: FunctionDef flush
+240: FunctionDef clear
+255: FunctionDef __init__
+265: FunctionDef resolve_activities
+301: FunctionDef resolve_activity
+308: FunctionDef resolve_entities
+326: FunctionDef resolve_entity
+333: FunctionDef resolve_productivity
+365: FunctionDef resolve_collaboration
+382: FunctionDef resolve_skills
+394: FunctionDef resolve_graph_nodes
+406: FunctionDef resolve_graph_edges
+420: FunctionDef resolve_graph_path
+458: FunctionDef resolve_search
+495: FunctionDef resolve_user
+501: FunctionDef mutate_create_activity
+518: FunctionDef mutate_delete_activity
+524: FunctionDef mutate_update_settings
+537: FunctionDef mutate_add_entity
+557: FunctionDef _apply_activity_filter
+577: FunctionDef _batch_load_entities
+584: FunctionDef _find_graph_node
+590: FunctionDef get_schema_info
+
+## backend/api/settings.py
+89: AsyncFunctionDef get_all_settings
+155: AsyncFunctionDef update_profile
+166: AsyncFunctionDef update_tracking_settings
+176: AsyncFunctionDef update_focus_settings
+186: AsyncFunctionDef update_privacy_settings
+196: AsyncFunctionDef update_notification_settings
+214: AsyncFunctionDef change_password
+228: AsyncFunctionDef enable_2fa
+259: AsyncFunctionDef disable_2fa
+274: AsyncFunctionDef export_data
+286: AsyncFunctionDef create_backup
+296: AsyncFunctionDef get_backups
+
+## backend/api/ai_chat.py
+33: FunctionDef _get_user_id
+113: FunctionDef __init__
+127: FunctionDef set_model
+137: FunctionDef get_available_models
+163: FunctionDef get_model_name
+167: AsyncFunctionDef get_response
+184: AsyncFunctionDef stream_response
+203: FunctionDef _build_system_prompt
+224: AsyncFunctionDef _get_openai_response
+240: AsyncFunctionDef _get_ollama_response
+263: AsyncFunctionDef _stream_openai
+280: AsyncFunctionDef _stream_ollama
+302: FunctionDef _get_demo_response
+398: FunctionDef __init__
+401: FunctionDef list_templates
+406: FunctionDef get_template
+413: FunctionDef create_template
+431: FunctionDef update_template
+447: FunctionDef delete_template
+463: AsyncFunctionDef send_message
+554: AsyncFunctionDef stream_message
+605: AsyncFunctionDef event_generator
+642: AsyncFunctionDef list_conversations
+659: AsyncFunctionDef get_conversation
+675: AsyncFunctionDef update_conversation
+695: AsyncFunctionDef archive_conversation
+711: AsyncFunctionDef delete_conversation
+727: AsyncFunctionDef export_conversation
+749: AsyncFunctionDef get_conversation_stats
+762: AsyncFunctionDef smart_search
+776: AsyncFunctionDef get_proactive_insights
+869: AsyncFunctionDef get_milestones
+885: AsyncFunctionDef get_focus_score
+950: AsyncFunctionDef get_wellness_score
+1028: AsyncFunctionDef generate_weekly_report
+1104: AsyncFunctionDef get_model_info
+1125: AsyncFunctionDef set_active_model
+1140: AsyncFunctionDef get_available_models
+1159: AsyncFunctionDef _get_user_context
+1249: FunctionDef _build_personalized_system_prompt
+1290: AsyncFunctionDef _index_activities_into_rag
+1433: AsyncFunctionDef list_templates
+1443: AsyncFunctionDef create_template
+1460: AsyncFunctionDef update_template
+1481: AsyncFunctionDef delete_template
+1498: AsyncFunctionDef list_plugins
+1508: AsyncFunctionDef create_plugin
+1529: AsyncFunctionDef toggle_plugin
+1543: AsyncFunctionDef update_plugin
+1558: AsyncFunctionDef delete_plugin
+
+## backend/config/app_categories.py
+221: FunctionDef categorize_app
+248: FunctionDef categorize_domain
+269: FunctionDef get_category_weight
+
+## backend/config/settings.py
+43: FunctionDef DATABASE_URL
+63: FunctionDef REDIS_URL
+74: FunctionDef QDRANT_URL
+119: FunctionDef cors_origins_list
+141: FunctionDef get_settings
+
+## backend/config/neo4j_config.py
+17: FunctionDef __init__
+44: FunctionDef get_session
+56: FunctionDef verify_connectivity
+75: FunctionDef close
+81: FunctionDef execute_schema_file
+143: FunctionDef get_neo4j_config
+163: FunctionDef get_neo4j_session
+174: FunctionDef get_neo4j_driver
+185: FunctionDef close_neo4j
+
+## backend/migrations/run_migration.py
+17: AsyncFunctionDef run_migration
+
+## backend/services/privacy_settings_service.py
+110: FunctionDef __init__
+119: FunctionDef get_settings
+125: FunctionDef update_settings
+156: FunctionDef reset_to_defaults
+166: FunctionDef get_retention_policy
+176: FunctionDef compute_purge_cutoff
+189: FunctionDef identify_purgeable_data
+242: FunctionDef detect_pii
+276: FunctionDef filter_pii
+320: FunctionDef generate_data_export
+368: FunctionDef get_export_history
+376: FunctionDef _log_audit
+395: FunctionDef get_audit_log
+409: FunctionDef get_audit_summary
+429: FunctionDef _deep_copy
+442: FunctionDef _diff_settings
+
+## backend/services/social_media_service.py
+31: FunctionDef __init__
+34: AsyncFunctionDef get_usage_summary
+77: FunctionDef _build_summary
+127: FunctionDef _empty_summary
+139: AsyncFunctionDef get_daily_breakdown
+189: AsyncFunctionDef get_peak_hours
+
+## backend/services/lightweight_ner.py
+282: FunctionDef classify_domain_org
+338: FunctionDef extract_entities
+355: FunctionDef add
+507: FunctionDef extract_entities_batch
+
+## backend/services/wearable_service.py
+40: FunctionDef __init__
+43: AsyncFunctionDef sync_fitbit
+162: AsyncFunctionDef sync_oura
+280: AsyncFunctionDef store_data_points
+324: AsyncFunctionDef get_wellness_dashboard
+
+## backend/services/embedding_service.py
+31: FunctionDef __new__
+36: FunctionDef __init__
+40: FunctionDef load_model
+51: FunctionDef generate_embedding
+79: FunctionDef generate_batch_embeddings
+115: FunctionDef compute_similarity
+145: FunctionDef get_embedding_dimension
+
+## backend/services/sync_scheduler.py
+28: FunctionDef _get_scheduler
+40: AsyncFunctionDef _run_sync_job
+53: AsyncFunctionDef schedule_user_sync
+86: AsyncFunctionDef remove_user_sync
+95: AsyncFunctionDef start_scheduler
+132: AsyncFunctionDef stop_scheduler
+
+## backend/services/goal_tracking_service.py
+56: FunctionDef __init__
+86: FunctionDef progress_pct
+92: FunctionDef is_overdue
+101: FunctionDef to_dict
+129: FunctionDef __init__
+136: FunctionDef create_goal
+166: FunctionDef get_goal
+175: FunctionDef list_goals
+210: FunctionDef update_goal
+237: FunctionDef delete_goal
+249: FunctionDef update_progress
+302: FunctionDef add_progress_increment
+323: FunctionDef complete_goal
+336: FunctionDef pause_goal
+347: FunctionDef resume_goal
+358: FunctionDef archive_goal
+373: FunctionDef get_goal_stats
+427: FunctionDef get_completion_streaks
+489: FunctionDef get_upcoming_deadlines
+522: FunctionDef auto_update_from_activity
+565: FunctionDef _check_overdue
+570: FunctionDef _check_milestones
+586: FunctionDef _compute_auto_delta
+
+## backend/services/graph_schema_service.py
+144: FunctionDef __init__
+157: FunctionDef current_version
+162: FunctionDef current_schema
+166: FunctionDef get_node_types
+170: FunctionDef get_relationship_types
+174: FunctionDef get_node_schema
+179: FunctionDef get_relationship_schema
+184: FunctionDef validate_node
+234: FunctionDef validate_relationship
+290: FunctionDef add_node_type
+322: FunctionDef add_relationship_type
+355: FunctionDef bump_version
+403: FunctionDef diff_versions
+486: FunctionDef export_schema
+503: FunctionDef get_version_history
+515: FunctionDef get_statistics
+
+## backend/services/content_vector_store.py
+41: FunctionDef __init__
+45: AsyncFunctionDef _get_client
+63: AsyncFunctionDef _ensure_collection
+79: AsyncFunctionDef upsert
+139: AsyncFunctionDef upsert_chunks
+176: AsyncFunctionDef search
+242: AsyncFunctionDef delete
+258: AsyncFunctionDef get_stats
+
+## backend/services/relationship_validator.py
+72: FunctionDef __init__
+76: FunctionDef validate_relationship
+124: FunctionDef compute_weight
+190: FunctionDef compute_confidence
+230: FunctionDef add_temporal_properties
+254: FunctionDef validate_required_properties
+292: FunctionDef enrich_relationship_properties
+
+## backend/services/recommendation_service.py
+120: FunctionDef __init__
+127: FunctionDef recommend_tools
+183: FunctionDef recommend_workflows
+285: FunctionDef recommend_collaborators
+346: FunctionDef recommend_learning
+435: FunctionDef recommend_time_management
+514: FunctionDef get_all_recommendations
+
+## backend/services/neo4j_sync_service.py
+29: FunctionDef __init__
+42: FunctionDef create_or_update_entity_node
+84: FunctionDef create_co_occurrence_relationships
+137: FunctionDef _calculate_relationship_strength
+169: FunctionDef _create_relationship
+215: FunctionDef infer_relationships
+286: FunctionDef _infer_relationship_type
+
+## backend/services/enrichment_pipeline.py
+33: FunctionDef __init__
+42: FunctionDef nlp
+49: FunctionDef auto_tagger
+56: FunctionDef spelling
+63: FunctionDef temporal
+70: FunctionDef resolver
+76: FunctionDef enrich_activity
+196: FunctionDef enrich_batch
+225: FunctionDef get_pipeline_stages
+229: FunctionDef _build_text_blob
+
+## backend/services/export_service.py
+22: FunctionDef export_daily_metrics_csv
+78: FunctionDef export_weekly_metrics_csv
+117: FunctionDef __init__
+125: AsyncFunctionDef export_weekly_report_pdf
+177: AsyncFunctionDef export_daily_summary_pdf
+
+## backend/services/event_bus.py
+18: FunctionDef __init__
+27: AsyncFunctionDef publish_activity_created
+82: AsyncFunctionDef publish_entity_created
+134: AsyncFunctionDef publish_entity_merged
+184: AsyncFunctionDef publish_activity_enriched
+237: AsyncFunctionDef publish_enrichment_failed
+287: AsyncFunctionDef get_stream_length
+294: AsyncFunctionDef trim_stream
+
+## backend/services/validation.py
+20: FunctionDef validate_uuid
+40: FunctionDef validate_date
+65: FunctionDef validate_date_range
+95: FunctionDef validate_week_start
+118: FunctionDef validate_score_range
+
+## backend/services/cross_activity_resolver.py
+46: FunctionDef __init__
+61: FunctionDef resolve_entity
+180: FunctionDef batch_resolve
+264: FunctionDef _generate_aliases
+304: FunctionDef _check_time_proximity
+314: FunctionDef _get_timestamp
+327: FunctionDef _fuzzy_match
+
+## backend/services/semantic_clustering_service.py
+25: FunctionDef _cosine_distance_matrix
+36: FunctionDef _dbscan
+46: FunctionDef region_query
+49: FunctionDef expand_cluster
+79: AsyncFunctionDef get_clusters
+
+## backend/services/community_service.py
+60: FunctionDef __init__
+65: FunctionDef detect_communities
+189: FunctionDef _project_graph
+254: FunctionDef _drop_graph
+266: FunctionDef get_communities
+315: FunctionDef get_community_by_id
+360: FunctionDef calculate_modularity
+426: FunctionDef get_community_statistics
+517: FunctionDef _get_largest_communities
+567: FunctionDef get_node_community
+601: FunctionDef find_community_bridges
+
+## backend/services/semantic_search_service.py
+47: FunctionDef __init__
+64: FunctionDef create_collection
+80: FunctionDef delete_collection
+92: FunctionDef optimize_collection
+116: FunctionDef create_payload_index
+129: FunctionDef list_collections
+142: FunctionDef get_collection_info
+158: FunctionDef upsert
+180: FunctionDef upsert_batch
+199: FunctionDef delete
+214: FunctionDef _cosine_similarity
+223: FunctionDef _euclidean_distance
+228: FunctionDef _tokenize
+231: FunctionDef _compute_idf
+240: FunctionDef _bm25_score
+262: FunctionDef semantic_search
+296: FunctionDef keyword_search
+343: FunctionDef hybrid_search
+394: FunctionDef rerank
+419: FunctionDef diversity_sample
+454: FunctionDef expand_query
+481: FunctionDef _get_vector
+489: FunctionDef faceted_search
+513: FunctionDef search_across_collections
+536: FunctionDef _matches_filters
+559: FunctionDef get_stats
+
+## backend/services/entity_deduplication.py
+50: FunctionDef __init__
+54: FunctionDef find
+62: FunctionDef union
+72: FunctionDef clusters
+84: FunctionDef _normalize
+92: FunctionDef _levenshtein_similarity
+99: FunctionDef _token_set_similarity
+110: FunctionDef _alias_similarity
+111: FunctionDef _get_aliases
+125: FunctionDef _combine_scores
+139: FunctionDef _score_pair
+197: AsyncFunctionDef scan_all_for_user
+310: AsyncFunctionDef merge_cluster
+355: AsyncFunctionDef merge_entities
+421: FunctionDef find_candidates_for_entity
+447: FunctionDef should_auto_merge
+450: FunctionDef _recommendation
+
+## backend/services/collaboration_analytics_service.py
+30: FunctionDef __init__
+48: AsyncFunctionDef get_weekly_collaboration
+86: AsyncFunctionDef _calculate_collaboration_score
+147: AsyncFunctionDef _get_top_collaborators
+186: AsyncFunctionDef _calculate_network_diversity
+235: AsyncFunctionDef _analyze_meeting_patterns
+
+## backend/services/knowledge_decay_service.py
+33: FunctionDef _compute_freshness
+46: FunctionDef _freshness_status
+58: FunctionDef _status_color
+71: AsyncFunctionDef get_decay_analysis
+141: AsyncFunctionDef get_at_risk
+
+## backend/services/predictive_service.py
+26: FunctionDef _day_name
+33: AsyncFunctionDef _get_daily_scores
+84: AsyncFunctionDef get_forecast
+
+## backend/services/relationship_inference.py
+170: FunctionDef __init__
+189: FunctionDef infer_relationships_from_co_occurrence
+297: FunctionDef _compute_weight
+333: FunctionDef _compute_confidence
+382: FunctionDef infer_citations_from_paper_content
+462: FunctionDef infer_tool_usage_from_text
+526: FunctionDef batch_infer_from_activity_log
+661: FunctionDef infer_from_activity_sequence
+775: FunctionDef infer_learning_relationships
+902: FunctionDef apply_confidence_thresholds
+947: FunctionDef infer_from_activity_sequence
+1040: FunctionDef infer_learning_relationships
+
+## backend/services/cloud_sync_service.py
+59: FunctionDef __init__
+65: FunctionDef ok
+68: FunctionDef to_dict
+82: AsyncFunctionDef sync_all
+200: AsyncFunctionDef sync_postgres
+377: AsyncFunctionDef sync_redis
+406: AsyncFunctionDef sync_neo4j
+470: AsyncFunctionDef sync_qdrant
+544: AsyncFunctionDef _safe_sync
+556: AsyncFunctionDef _ensure_cloud_table
+615: FunctionDef _sanitize_row
+632: AsyncFunctionDef restore_all
+702: AsyncFunctionDef restore_postgres
+779: AsyncFunctionDef restore_redis
+811: AsyncFunctionDef restore_neo4j
+875: AsyncFunctionDef restore_qdrant
+
+## backend/services/notification_preferences_service.py
+112: FunctionDef __init__
+121: FunctionDef get_preferences
+127: FunctionDef update_preferences
+144: FunctionDef set_channel
+150: FunctionDef set_type
+156: FunctionDef reset_to_defaults
+165: FunctionDef set_dnd
+184: FunctionDef is_dnd_active
+207: FunctionDef should_send
+257: FunctionDef _get_send_counts
+273: FunctionDef record_send
+283: FunctionDef generate_digest
+335: FunctionDef add_notification
+366: FunctionDef get_notifications
+386: FunctionDef mark_read
+394: FunctionDef mark_all_read
+403: FunctionDef get_unread_count
+410: FunctionDef delete_notification
+419: FunctionDef clear_all
+426: FunctionDef _deep_copy
+
+## backend/services/document_extractor.py
+51: FunctionDef to_dict
+106: FunctionDef extract
+173: FunctionDef _extract_pdf
+222: FunctionDef _extract_docx
+307: FunctionDef _extract_xlsx
+351: FunctionDef _extract_pptx
+
+## backend/services/temporal_enrichment.py
+60: FunctionDef __init__
+69: FunctionDef enrich_temporal
+121: FunctionDef get_temporal_patterns
+188: FunctionDef _extract_timestamp
+208: FunctionDef _classify_time_of_day
+220: FunctionDef _get_time_period
+230: FunctionDef _is_work_hours
+234: FunctionDef _is_core_hours
+238: FunctionDef _categorize_duration
+245: FunctionDef _get_session_label
+269: FunctionDef _detect_recurring_patterns
+297: FunctionDef _empty_enrichment
+314: FunctionDef _empty_patterns
+
+## backend/services/subgraph_extraction_service.py
+30: FunctionDef __init__
+33: FunctionDef extract_ego_network
+123: FunctionDef extract_path_subgraph
+180: FunctionDef extract_topic_subgraph
+243: FunctionDef extract_temporal_subgraph
+309: FunctionDef extract_filtered_subgraph
+381: FunctionDef _compute_subgraph_stats
+454: FunctionDef _bfs_distances
+
+## backend/services/content_pipeline.py
+89: FunctionDef to_dict
+124: FunctionDef process
+183: FunctionDef extract_keyphrases
+209: FunctionDef _frequency_keyphrases
+231: FunctionDef classify_topic
+244: FunctionDef _topic_via_keywords
+315: FunctionDef _detect_language
+333: FunctionDef _flesch_kincaid_grade
+354: FunctionDef _count_syllables
+
+## backend/services/expertise_discovery.py
+87: FunctionDef __init__
+91: FunctionDef build_skill_profile
+184: FunctionDef rank_expertise
+252: FunctionDef analyze_skill_gaps
+323: FunctionDef detect_cross_domain_bridges
+397: FunctionDef build_expertise_timeline
+469: FunctionDef get_skill_category
+473: FunctionDef get_all_categories
+477: FunctionDef _generate_gap_recommendations
+
+## backend/services/code_extractor.py
+58: FunctionDef to_dict
+90: FunctionDef to_searchable_text
+147: FunctionDef __init__
+150: FunctionDef extract
+175: FunctionDef extract_from_file
+191: FunctionDef _try_tree_sitter
+239: FunctionDef _get_parser
+254: FunctionDef _node_text
+257: FunctionDef _extract_python_ts
+280: FunctionDef _parse_python_function
+307: FunctionDef _parse_python_class
+338: FunctionDef _extract_js_ts
+340: FunctionDef walk
+365: FunctionDef _extract_rust_ts
+367: FunctionDef walk
+393: FunctionDef _extract_generic_ts
+400: FunctionDef walk
+425: FunctionDef _extract_regex
+444: FunctionDef _regex_python
+475: FunctionDef _regex_js
+486: FunctionDef _regex_rust
+494: FunctionDef _regex_generic
+
+## backend/services/productivity_metrics_service.py
+52: FunctionDef __init__
+63: AsyncFunctionDef compute_daily_metrics
+176: AsyncFunctionDef get_daily_metrics
+223: AsyncFunctionDef get_weekly_aggregate
+300: AsyncFunctionDef _compute_deep_work_hours
+365: AsyncFunctionDef _compute_context_switches
+396: AsyncFunctionDef _compute_meeting_load
+416: AsyncFunctionDef _compute_distraction_index
+443: AsyncFunctionDef _compute_break_quality
+501: AsyncFunctionDef _compute_focus_score
+549: FunctionDef get_time_allocation_by_project
+626: FunctionDef get_comparative_analytics
+728: AsyncFunctionDef get_metrics_service
+
+## backend/services/stripe_service.py
+77: FunctionDef create_customer
+89: FunctionDef create_checkout_session
+114: FunctionDef get_subscription
+122: FunctionDef cancel_subscription
+140: FunctionDef update_subscription
+158: FunctionDef get_invoices
+167: FunctionDef create_customer_portal_session
+179: FunctionDef construct_webhook_event
+194: FunctionDef get_plan_limits
+199: FunctionDef check_usage_limit
+225: FunctionDef format_price
+233: FunctionDef get_all_plans
+239: FunctionDef is_test_mode
+245: FunctionDef get_publishable_key
+
+## backend/services/activity_dedup.py
+21: FunctionDef __init__
+24: AsyncFunctionDef check_duplicate
+53: AsyncFunctionDef check_client_id_dedup
+72: AsyncFunctionDef check_heuristic_dedup
+136: FunctionDef _bucket_duration
+158: FunctionDef generate_dedup_hash
+
+## backend/services/skill_analytics_service.py
+39: FunctionDef __init__
+57: AsyncFunctionDef get_weekly_skills
+95: AsyncFunctionDef _get_top_skills
+136: AsyncFunctionDef _calculate_mastery_levels
+180: FunctionDef _hours_to_mastery_level
+193: FunctionDef _calculate_progress_to_next_level
+208: AsyncFunctionDef _analyze_growth_trajectories
+268: AsyncFunctionDef _get_skill_recommendations
+
+## backend/services/meeting_service.py
+26: FunctionDef __init__
+29: AsyncFunctionDef get_meeting_summary
+72: FunctionDef _build_summary
+119: FunctionDef _meeting_load_label
+130: FunctionDef _empty_summary
+144: AsyncFunctionDef get_daily_breakdown
+203: AsyncFunctionDef get_meeting_free_blocks
+
+## backend/services/email_service.py
+21: FunctionDef __init__
+47: AsyncFunctionDef send_daily_summary_email
+81: AsyncFunctionDef send_weekly_report_email
+106: AsyncFunctionDef _send_via_smtp
+144: AsyncFunctionDef _send_via_sendgrid
+183: FunctionDef _create_daily_email_template
+285: FunctionDef _create_weekly_email_template
+398: FunctionDef get_email_service
+
+## backend/services/wellness_metrics_service.py
+51: FunctionDef __init__
+58: FunctionDef calculate_work_life_balance
+155: FunctionDef assess_burnout_risk
+283: FunctionDef estimate_energy_levels
+346: FunctionDef calculate_stress_index
+426: FunctionDef analyze_rest_patterns
+499: FunctionDef generate_wellness_report
+534: FunctionDef _generate_burnout_recommendations
+
+## backend/services/centrality_service.py
+60: FunctionDef __init__
+65: FunctionDef _project_user_graph
+168: FunctionDef _drop_graph
+180: FunctionDef compute_degree_centrality
+284: FunctionDef compute_betweenness_centrality
+384: FunctionDef compute_closeness_centrality
+484: FunctionDef compute_eigenvector_centrality
+593: FunctionDef compute_pagerank
+713: FunctionDef compute_all_metrics
+
+## backend/services/conversation_export_service.py
+26: FunctionDef __init__
+33: FunctionDef export_conversation
+90: FunctionDef export_all
+117: FunctionDef export_combined
+152: FunctionDef _to_markdown
+195: FunctionDef _to_json
+207: FunctionDef _to_plaintext
+229: FunctionDef _to_pdf_html
+288: FunctionDef get_export_stats
+
+## backend/services/rag_service.py
+31: FunctionDef __init__
+52: FunctionDef to_dict
+65: FunctionDef format_inline
+69: FunctionDef format_footnote
+88: FunctionDef __init__
+102: FunctionDef add_documents
+123: FunctionDef get_collections
+127: FunctionDef get_collection_stats
+140: FunctionDef retrieve
+191: FunctionDef semantic_search
+235: FunctionDef build_augmented_prompt
+298: FunctionDef format_response_with_citations
+336: FunctionDef smart_search
+395: FunctionDef _compute_relevance
+431: FunctionDef _cosine_similarity
+445: FunctionDef _matches_filters
+462: FunctionDef _rerank
+499: FunctionDef _extract_best_snippet
+
+## backend/services/career_development_service.py
+90: FunctionDef __init__
+97: FunctionDef analyze_career_trajectory
+164: FunctionDef assess_role_readiness
+254: FunctionDef analyze_skill_gaps
+315: FunctionDef calculate_growth_velocity
+384: FunctionDef detect_milestones
+411: FunctionDef get_current_milestone
+438: FunctionDef generate_career_report
+486: FunctionDef _group_by_domain
+505: FunctionDef _determine_phase
+
+## backend/services/weekly_report_service.py
+50: FunctionDef __init__
+83: AsyncFunctionDef generate_weekly_report
+206: AsyncFunctionDef get_weekly_report
+256: AsyncFunctionDef _generate_all_sections
+314: AsyncFunctionDef _generate_overview_section
+353: FunctionDef _generate_time_analytics_section
+370: FunctionDef _generate_productivity_section
+386: AsyncFunctionDef _generate_projects_section
+405: AsyncFunctionDef _generate_papers_section
+423: AsyncFunctionDef _generate_trends_section
+455: AsyncFunctionDef _generate_recommendations_section
+506: FunctionDef _build_report_markdown
+555: FunctionDef _build_report_html
+565: FunctionDef _format_projects_markdown
+572: FunctionDef _format_collaboration_markdown
+578: FunctionDef _format_skills_markdown
+584: FunctionDef _format_trends_markdown
+596: AsyncFunctionDef _generate_with_llm
+626: AsyncFunctionDef get_weekly_report_service
+
+## backend/services/graph_intelligence_service.py
+36: FunctionDef _entity_to_profile_dict
+66: FunctionDef _pagerank
+121: AsyncFunctionDef get_expertise_profile
+160: AsyncFunctionDef get_learning_paths
+251: AsyncFunctionDef get_collaboration_patterns
+349: AsyncFunctionDef get_cross_domain_connections
+418: AsyncFunctionDef compute_pagerank
+503: AsyncFunctionDef get_recommendations
+594: AsyncFunctionDef detect_communities
+
+## backend/services/cloud_sync.py
+41: FunctionDef encrypt_payload
+56: FunctionDef decrypt_payload
+66: FunctionDef derive_key_from_password
+72: FunctionDef key_fingerprint
+81: FunctionDef _record_hash
+88: FunctionDef build_manifest
+98: FunctionDef dedup_snapshots
+115: FunctionDef merge_snapshots
+145: FunctionDef __init__
+152: FunctionDef get_auth_url
+169: FunctionDef exchange_code
+191: FunctionDef _make_flow
+205: FunctionDef _build_service
+221: FunctionDef _get_or_create_folder
+241: FunctionDef upload
+264: FunctionDef download
+286: FunctionDef list_snapshots
+298: FunctionDef get_user_info
+327: FunctionDef __init__
+336: FunctionDef get_auth_url
+347: FunctionDef exchange_code
+360: FunctionDef _make_app
+368: FunctionDef _refresh_token_if_needed
+382: FunctionDef _headers
+387: FunctionDef _ensure_folder
+407: FunctionDef upload
+419: FunctionDef download
+439: FunctionDef list_snapshots
+453: FunctionDef get_user_info
+470: FunctionDef _load_env
+483: FunctionDef get_gdrive_sync
+506: FunctionDef get_onedrive_sync
+
+## backend/services/spelling_correction.py
+124: FunctionDef __init__
+133: FunctionDef correct_entity_name
+193: FunctionDef correct_text
+250: FunctionDef is_tech_term
+254: FunctionDef add_to_whitelist
+259: FunctionDef add_correction
+264: FunctionDef _apply_dictionary_corrections
+295: FunctionDef _fix_casing
+356: FunctionDef _clean_artifacts
+
+## backend/services/dashboard_service.py
+43: FunctionDef __init__
+52: FunctionDef get_dashboard_overview
+97: FunctionDef get_productivity_summary
+135: FunctionDef get_collaboration_summary
+170: FunctionDef get_skill_summary
+221: FunctionDef get_career_summary
+253: FunctionDef get_wellness_summary
+284: FunctionDef get_weekly_digest
+342: FunctionDef export_analytics_data
+392: FunctionDef _extract_productivity_kpis
+446: FunctionDef _generate_quick_actions
+492: FunctionDef _generate_career_recommendations
+516: FunctionDef _generate_weekly_highlights
+545: FunctionDef _generate_weekly_suggestions
+573: FunctionDef _compute_productivity_score
+589: FunctionDef _to_csv
+597: FunctionDef _flatten
+
+## backend/services/daily_summary_service.py
+41: FunctionDef __init__
+70: AsyncFunctionDef generate_daily_summary
+203: AsyncFunctionDef get_daily_summary
+253: AsyncFunctionDef _get_activity_breakdown
+282: FunctionDef _build_daily_summary_prompt
+345: AsyncFunctionDef _generate_with_llm
+411: FunctionDef _generate_fallback_summary
+440: FunctionDef _markdown_to_html
+470: FunctionDef _extract_metadata
+516: AsyncFunctionDef get_daily_summary_service
+
+## backend/services/link_prediction_service.py
+42: FunctionDef __init__
+49: FunctionDef common_neighbors
+80: FunctionDef jaccard_coefficient
+115: FunctionDef adamic_adar_index
+158: FunctionDef preferential_attachment
+197: FunctionDef embedding_similarity
+241: FunctionDef predict_link
+304: FunctionDef predict_top_links
+345: FunctionDef batch_predict
+392: FunctionDef _normalize_cn
+404: FunctionDef _cosine_similarity
+
+## backend/services/spacy_bert_ner.py
+94: FunctionDef detect_language
+128: FunctionDef __init__
+135: FunctionDef _load_spacy_model
+169: FunctionDef _add_tool_patterns
+187: FunctionDef _load_hf_pipeline
+213: FunctionDef extract_entities
+280: FunctionDef _extract_bert
+316: FunctionDef _extract_spacy
+360: FunctionDef _extract_tools_regex
+379: FunctionDef _extract_from_context
+409: FunctionDef _deduplicate
+422: FunctionDef extract_entities_batch
+441: FunctionDef get_supported_languages
+454: FunctionDef get_loaded_models
+461: FunctionDef set_pipeline_preference
+
+## backend/services/entity_normalizer.py
+66: FunctionDef normalize
+120: FunctionDef _clean_text
+148: FunctionDef _extract_external_ids
+184: FunctionDef _generate_aliases
+225: FunctionDef should_merge
+
+## backend/services/node2vec_service.py
+65: FunctionDef __init__
+105: FunctionDef _get_qdrant_client
+132: FunctionDef _extract_subgraph
+217: FunctionDef _compute_graph_hash
+235: FunctionDef train_embeddings
+365: FunctionDef store_embeddings_qdrant
+411: FunctionDef store_embeddings_neo4j
+468: FunctionDef find_similar_nodes
+529: FunctionDef compute_all_similarities
+585: FunctionDef clear_cache
+
+## backend/services/focus_period_service.py
+22: FunctionDef __init__
+25: AsyncFunctionDef get_focus_summary
+163: AsyncFunctionDef get_optimal_focus_times
+236: AsyncFunctionDef get_context_switch_analysis
+299: AsyncFunctionDef store_focus_sessions
+352: FunctionDef _empty_summary
+
+## backend/services/qdrant_entity_service.py
+23: FunctionDef __init__
+28: FunctionDef client
+38: FunctionDef upload_entity
+84: FunctionDef upload_batch
+119: FunctionDef find_similar_entities
+164: FunctionDef delete_entity
+
+## backend/services/integration_management_service.py
+103: FunctionDef __init__
+111: FunctionDef list_available
+122: FunctionDef get_integration_info
+135: FunctionDef connect
+168: FunctionDef disconnect
+177: FunctionDef reconnect
+189: FunctionDef get_connection
+193: FunctionDef get_all_connections
+212: FunctionDef set_sync_frequency
+220: FunctionDef record_sync
+254: FunctionDef get_sync_history
+264: FunctionDef needs_sync
+297: FunctionDef set_data_permissions
+310: FunctionDef get_data_permissions
+321: FunctionDef get_health
+364: FunctionDef get_all_health
+373: FunctionDef _health_recommendations
+
+## backend/services/milestone_service.py
+68: AsyncFunctionDef check_milestones
+
+## backend/services/conversation_service.py
+31: FunctionDef __init__
+53: FunctionDef to_dict
+66: FunctionDef to_llm_message
+78: FunctionDef __init__
+100: FunctionDef to_dict
+130: FunctionDef __init__
+138: FunctionDef create_conversation
+155: FunctionDef get_conversation
+167: FunctionDef list_conversations
+196: FunctionDef archive_conversation
+210: FunctionDef delete_conversation
+223: FunctionDef update_conversation
+247: FunctionDef add_message
+290: FunctionDef get_messages
+313: FunctionDef get_memory_context
+364: FunctionDef build_llm_messages
+401: FunctionDef get_conversation_stats
+427: FunctionDef _generate_title
+444: FunctionDef _summarize_messages
+
+## backend/services/proactive_insights_service.py
+67: FunctionDef __init__
+93: FunctionDef to_dict
+127: FunctionDef __init__
+135: FunctionDef generate_daily_insights
+187: FunctionDef generate_weekly_insights
+267: FunctionDef get_active_insights
+292: FunctionDef dismiss_insight
+306: FunctionDef get_insight_stats
+335: FunctionDef _analyze_focus
+386: FunctionDef _analyze_productivity
+433: FunctionDef _analyze_wellness
+473: FunctionDef _detect_achievements
+512: FunctionDef _analyze_collaboration
+553: FunctionDef _count_streak
+569: FunctionDef _stddev
+577: FunctionDef _deduplicate
+
+## backend/services/graph_ingestion.py
+73: FunctionDef retry_on_transient_error
+81: FunctionDef decorator
+83: FunctionDef wrapper
+121: FunctionDef __init__
+126: FunctionDef ingest_entity
+206: FunctionDef _upsert_entity
+236: FunctionDef _map_type_specific_properties
+360: FunctionDef ingest_batch
+381: FunctionDef _batch_ingest
+471: FunctionDef ingest_relationship
+584: FunctionDef _create_relationship
+618: FunctionDef ingest_batch_relationships
+644: FunctionDef _batch_ingest_relationships
+736: FunctionDef get_node
+763: FunctionDef delete_node
+782: FunctionDef _delete_node
+
+## backend/services/auto_tagger.py
+209: FunctionDef __init__
+216: FunctionDef auto_tag_activity
+284: FunctionDef _tag_from_domain
+311: FunctionDef _tag_from_app
+333: FunctionDef _tag_from_title
+347: FunctionDef _tag_from_entities
+364: FunctionDef get_tag_hierarchy
+368: FunctionDef get_parent_tag
+375: FunctionDef get_all_tags
+
+## backend/services/nlp_service.py
+149: FunctionDef __new__
+154: FunctionDef __init__
+158: FunctionDef load_model
+183: FunctionDef _add_work_entity_patterns
+199: FunctionDef extract_entities
+238: FunctionDef extract_entities_enhanced
+302: FunctionDef extract_entities_batch
+345: FunctionDef enrich_context
+380: FunctionDef _classify_document_type
+391: FunctionDef _parse_url
+405: FunctionDef _extract_git_context
+435: FunctionDef _estimate_urgency
+447: FunctionDef _calculate_confidence
+469: FunctionDef get_model
+475: FunctionDef get_model_name
+
+## backend/services/plugin_service.py
+106: FunctionDef __init__
+111: FunctionDef _get_user_plugins
+115: FunctionDef list_plugins
+121: FunctionDef get_enabled_plugins
+125: FunctionDef get_enabled_system_prompts
+133: FunctionDef get_plugin
+140: FunctionDef create_plugin
+174: FunctionDef toggle_plugin
+190: FunctionDef delete_plugin
+199: FunctionDef update_plugin
+
+## backend/services/learning_path_service.py
+40: FunctionDef __init__
+43: FunctionDef infer_prerequisites
+118: FunctionDef find_learning_paths
+188: FunctionDef find_shortest_path
+248: FunctionDef recommend_paths
+325: FunctionDef score_path
+386: FunctionDef _estimate_difficulty
+
+## backend/middleware/rate_limiter.py
+101: FunctionDef __init__
+107: FunctionDef _refill
+113: FunctionDef consume
+121: FunctionDef tokens_available
+125: FunctionDef time_until_available
+142: FunctionDef __init__
+147: FunctionDef _prune
+151: FunctionDef record
+159: FunctionDef current_count
+163: FunctionDef remaining
+167: FunctionDef reset_at
+194: FunctionDef __init__
+206: FunctionDef _get_tier
+209: FunctionDef _ensure_limiters
+236: FunctionDef check
+334: FunctionDef record
+371: FunctionDef acquire_concurrent
+375: FunctionDef release_concurrent
+383: FunctionDef check_ip
+401: FunctionDef get_user_usage
+418: FunctionDef get_stats
+430: FunctionDef reset_user
+442: FunctionDef _log_request
+463: FunctionDef get_recent_blocks
+
+## backend/middleware/feature_gate.py
+83: FunctionDef __init__
+95: FunctionDef can
+100: FunctionDef limit
+107: FunctionDef require
+118: FunctionDef require_limit
+141: FunctionDef usage_info
+
+## backend/api/webhooks/stripe.py
+21: FunctionDef _build_price_tier_map
+28: AsyncFunctionDef _find_user_by_customer
+40: AsyncFunctionDef stripe_webhook
+66: AsyncFunctionDef _dispatch
+94: AsyncFunctionDef _on_checkout_completed
+112: AsyncFunctionDef _on_subscription_created
+134: AsyncFunctionDef _on_subscription_updated
+154: AsyncFunctionDef _on_subscription_deleted
+167: AsyncFunctionDef _on_payment_failed
+176: AsyncFunctionDef test_webhook_endpoint
+
+## backend/api/v1/wearables.py
+65: AsyncFunctionDef _ensure_tables
+162: AsyncFunctionDef initiate_wearable_oauth
+209: AsyncFunctionDef wearable_oauth_callback
+313: AsyncFunctionDef get_all_wearable_status
+355: AsyncFunctionDef disconnect_wearable
+385: AsyncFunctionDef get_wearable_data
+442: AsyncFunctionDef sync_mobile_health_data
+
+## backend/api/v1/activities.py
+64: AsyncFunctionDef create_activity
+146: AsyncFunctionDef list_activities
+203: AsyncFunctionDef get_activity
+249: AsyncFunctionDef sync_activities
+315: AsyncFunctionDef bulk_delete_activities
+356: AsyncFunctionDef delete_activity
+
+## backend/api/v1/graph.py
+52: AsyncFunctionDef get_expertise
+66: AsyncFunctionDef get_learning_paths
+80: AsyncFunctionDef get_collaboration
+94: AsyncFunctionDef get_cross_domain
+108: AsyncFunctionDef get_pagerank
+132: AsyncFunctionDef get_node_details
+216: AsyncFunctionDef get_node_neighbors
+294: AsyncFunctionDef get_experts
+440: AsyncFunctionDef get_graph_visualization
+
+## backend/api/v1/users.py
+66: AsyncFunctionDef get_current_user_from_token
+103: AsyncFunctionDef get_me
+112: AsyncFunctionDef get_my_profile
+136: AsyncFunctionDef update_my_profile
+161: AsyncFunctionDef get_my_preferences
+171: AsyncFunctionDef update_my_preferences
+188: AsyncFunctionDef get_my_privacy_settings
+198: AsyncFunctionDef update_my_privacy_settings
+215: AsyncFunctionDef change_my_password
+250: AsyncFunctionDef export_my_data
+302: AsyncFunctionDef delete_my_data
+411: AsyncFunctionDef delete_my_account
+
+## backend/api/v1/waitlist.py
+33: AsyncFunctionDef join_waitlist
+68: AsyncFunctionDef get_waitlist_stats
+
+## backend/api/v1/documents.py
+60: FunctionDef _get_user_id
+94: AsyncFunctionDef extract_document
+289: AsyncFunctionDef get_document
+307: AsyncFunctionDef list_documents
+
+## backend/api/v1/billing.py
+95: AsyncFunctionDef _get_user
+109: FunctionDef _warning
+128: AsyncFunctionDef get_subscription
+178: AsyncFunctionDef get_usage_metrics
+234: AsyncFunctionDef get_invoices
+272: AsyncFunctionDef get_plans
+291: AsyncFunctionDef create_checkout_session
+357: AsyncFunctionDef cancel_subscription
+381: AsyncFunctionDef update_subscription
+412: AsyncFunctionDef create_portal_session
+
+## backend/api/v1/enrichment_api.py
+26: AsyncFunctionDef _find_or_create_entity
+97: AsyncFunctionDef process_all_activities
+169: AsyncFunctionDef enrichment_status
+
+## backend/api/v1/screenshots.py
+75: AsyncFunctionDef _ensure_table
+90: AsyncFunctionDef upload_screenshot
+149: AsyncFunctionDef list_screenshots
+202: AsyncFunctionDef get_screenshot
+235: AsyncFunctionDef delete_screenshot
+260: AsyncFunctionDef delete_all_screenshots
+
+## backend/api/v1/goals.py
+29: FunctionDef _get_user_id
+77: AsyncFunctionDef create_goal
+97: AsyncFunctionDef list_goals
+114: AsyncFunctionDef get_goal_stats
+123: AsyncFunctionDef get_completion_streaks
+132: AsyncFunctionDef get_upcoming_deadlines
+142: AsyncFunctionDef get_goal
+155: AsyncFunctionDef update_goal
+176: AsyncFunctionDef delete_goal
+193: AsyncFunctionDef update_progress
+212: AsyncFunctionDef increment_progress
+235: AsyncFunctionDef complete_goal
+248: AsyncFunctionDef pause_goal
+261: AsyncFunctionDef resume_goal
+274: AsyncFunctionDef archive_goal
+
+## backend/api/v1/entities.py
+33: AsyncFunctionDef list_entities
+93: AsyncFunctionDef get_entity_stats
+131: AsyncFunctionDef dedup_scan
+168: AsyncFunctionDef merge_cluster
+219: AsyncFunctionDef get_entity
+276: AsyncFunctionDef get_entity_duplicates
+350: AsyncFunctionDef merge_entities
+409: AsyncFunctionDef get_entity_neighbors
+
+## backend/api/v1/realtime.py
+15: AsyncFunctionDef websocket_endpoint
+
+## backend/api/v1/content_ingestion.py
+47: FunctionDef _optional_user_id
+60: FunctionDef _require_user
+116: AsyncFunctionDef export_content
+157: AsyncFunctionDef ingest_content
+297: AsyncFunctionDef search_content
+375: AsyncFunctionDef list_content
+429: AsyncFunctionDef content_stats
+457: AsyncFunctionDef get_content
+475: AsyncFunctionDef delete_content
+505: FunctionDef _compute_graph_tags
+529: FunctionDef _extract_domain
+537: FunctionDef _title_from_url
+549: FunctionDef _sanitize_text
+
+## backend/api/v1/export.py
+52: AsyncFunctionDef _require_pro_user
+80: AsyncFunctionDef export_download
+235: AsyncFunctionDef export_upload
+443: FunctionDef _row_to_serializable
+460: FunctionDef _sanitize_for_insert
+
+## backend/api/v1/sync.py
+47: AsyncFunctionDef _require_pro_user
+76: AsyncFunctionDef trigger_sync
+89: AsyncFunctionDef _run_sync
+105: AsyncFunctionDef get_schedule
+120: AsyncFunctionDef update_schedule
+163: AsyncFunctionDef get_sync_history
+199: AsyncFunctionDef restore_from_cloud
+213: AsyncFunctionDef _run_restore
+
+## backend/api/v1/cloud_backup.py
+64: AsyncFunctionDef _require_user
+93: FunctionDef _get_sync_key
+104: FunctionDef _snapshot_filename
+112: FunctionDef _get_tokens
+116: FunctionDef _set_tokens
+122: FunctionDef _clear_tokens
+127: AsyncFunctionDef get_combined_sync_status
+184: AsyncFunctionDef backup_now
+255: AsyncFunctionDef gdrive_connect
+269: AsyncFunctionDef gdrive_callback
+290: AsyncFunctionDef gdrive_status
+318: AsyncFunctionDef gdrive_upload
+358: AsyncFunctionDef gdrive_download
+394: AsyncFunctionDef gdrive_disconnect
+407: AsyncFunctionDef onedrive_connect
+421: AsyncFunctionDef onedrive_callback
+440: AsyncFunctionDef onedrive_status
+463: AsyncFunctionDef onedrive_upload
+497: AsyncFunctionDef onedrive_download
+531: AsyncFunctionDef onedrive_disconnect
+
+## backend/api/v1/analytics.py
+29: FunctionDef _get_user_id
+48: FunctionDef _compute_focus_score
+66: FunctionDef _dur
+93: FunctionDef _format_duration
+104: FunctionDef _time_ago
+283: AsyncFunctionDef _compute_daily_metrics
+306: FunctionDef capped
+387: AsyncFunctionDef get_dashboard_overview
+483: AsyncFunctionDef get_productivity_daily
+504: AsyncFunctionDef get_productivity_daily_range
+543: FunctionDef capped
+604: AsyncFunctionDef get_productivity_weekly
+645: AsyncFunctionDef get_productivity_metrics
+682: FunctionDef capped
+778: AsyncFunctionDef get_collaboration_metrics
+864: AsyncFunctionDef get_skill_metrics
+1116: AsyncFunctionDef get_career_insights
+1221: AsyncFunctionDef get_wellness_metrics
+1305: AsyncFunctionDef get_weekly_summary
+1331: FunctionDef capped_dur
+1426: AsyncFunctionDef export_analytics
+1458: AsyncFunctionDef generate_productivity_report
+1701: FunctionDef _goal_to_pydantic
+1731: AsyncFunctionDef list_goals
+1773: AsyncFunctionDef create_goal
+1806: AsyncFunctionDef update_goal
+1841: AsyncFunctionDef delete_goal
+1870: AsyncFunctionDef get_deep_work_sessions
+2008: AsyncFunctionDef get_context_switch_timeline
+2103: AsyncFunctionDef get_break_patterns
+2235: AsyncFunctionDef get_break_classification
+2343: AsyncFunctionDef get_focus_periods
+2429: FunctionDef _make_focus_period
+2460: AsyncFunctionDef get_screenshot_metadata
+2514: AsyncFunctionDef get_graph_recommendations
+2555: AsyncFunctionDef get_knowledge_decay
+2573: AsyncFunctionDef get_at_risk_knowledge
+2595: AsyncFunctionDef get_knowledge_clusters
+2618: AsyncFunctionDef get_communities
+2639: AsyncFunctionDef get_productivity_forecast
+2677: AsyncFunctionDef get_entity_types
+2701: AsyncFunctionDef create_entity_type
+2747: AsyncFunctionDef delete_entity_type
+
+## backend/api/v1/activity_ingestion.py
+34: AsyncFunctionDef ingest_activity_batch
+212: AsyncFunctionDef get_ingestion_stats
+256: FunctionDef _hash_ip
+
+## backend/api/v1/admin.py
+28: AsyncFunctionDef require_superadmin
+87: AsyncFunctionDef admin_overview
+155: AsyncFunctionDef admin_list_users
+233: AsyncFunctionDef admin_get_user
+264: AsyncFunctionDef admin_update_user
+305: AsyncFunctionDef admin_delete_user
+332: AsyncFunctionDef admin_subscriptions
+377: AsyncFunctionDef admin_regions
+426: AsyncFunctionDef admin_tokens
+475: AsyncFunctionDef admin_system_health
+
+## backend/api/v1/account.py
+35: AsyncFunctionDef _get_user
+54: AsyncFunctionDef delete_account
+119: AsyncFunctionDef export_personal_data
+
+## backend/api/v1/integrations.py
+31: AsyncFunctionDef ensure_table_exists
+71: AsyncFunctionDef save_integration
+135: AsyncFunctionDef get_integration_status
+150: AsyncFunctionDef remove_integration
+197: AsyncFunctionDef initiate_github_oauth
+227: AsyncFunctionDef github_oauth_callback
+318: AsyncFunctionDef get_github_status
+347: AsyncFunctionDef disconnect_github
+372: AsyncFunctionDef initiate_google_oauth
+405: AsyncFunctionDef google_oauth_callback
+502: AsyncFunctionDef get_google_status
+530: AsyncFunctionDef disconnect_google
+555: AsyncFunctionDef initiate_notion_oauth
+586: AsyncFunctionDef notion_oauth_callback
+678: AsyncFunctionDef get_notion_status
+706: AsyncFunctionDef disconnect_notion
+731: AsyncFunctionDef initiate_slack_oauth
+759: AsyncFunctionDef slack_oauth_callback
+830: AsyncFunctionDef get_slack_status
+855: AsyncFunctionDef disconnect_slack
+878: AsyncFunctionDef initiate_jira_oauth
+909: AsyncFunctionDef jira_oauth_callback
+1011: AsyncFunctionDef get_jira_status
+1036: AsyncFunctionDef disconnect_jira
+
+## backend/api/v1/auth.py
+42: FunctionDef _cleanup_rate_store
+55: FunctionDef _check_rate_limit
+130: AsyncFunctionDef register
+214: AsyncFunctionDef login
+318: FunctionDef _save_local_token
+340: AsyncFunctionDef refresh_access_token
+453: AsyncFunctionDef oauth_exchange
+537: AsyncFunctionDef logout
+574: AsyncFunctionDef get_current_user
+634: AsyncFunctionDef list_trusted_devices
+674: AsyncFunctionDef revoke_device
+715: AsyncFunctionDef verify_local_token
+
+## backend/api/v1/graph_models.py
+164: FunctionDef validate_embedding_vector
+234: FunctionDef offset
+
+## backend/api/v1/schemas/activity_schemas.py
+86: FunctionDef validate_context
+94: FunctionDef validate_metadata
+129: FunctionDef validate_batch_size
+
+## backend/migrations/versions/001_initial_schema.py
+19: FunctionDef upgrade
+129: FunctionDef downgrade
+
+## backend/migrations/versions/003_add_superadmin.py
+17: FunctionDef upgrade
+26: FunctionDef downgrade
+
+## scripts/seed_qdrant_embeddings.py
+46: AsyncFunctionDef purge_bad_entities
+116: AsyncFunctionDef ensure_qdrant_collection
+136: AsyncFunctionDef seed_embeddings
+
+## scripts/seed_enrichment.py
+53: AsyncFunctionDef seed_enrichment
+
+## tests/test_module2_enrichment.py
+33: FunctionDef setup_method
+43: FunctionDef test_basic_entity_extraction
+51: FunctionDef test_empty_text_returns_empty
+57: FunctionDef test_confidence_scoring
+64: FunctionDef test_entity_structure
+75: FunctionDef test_long_text_truncation
+82: FunctionDef test_extract_entities_enhanced_basic
+94: FunctionDef test_extract_entities_enhanced_github_url
+104: FunctionDef test_extract_entities_enhanced_deduplication
+114: FunctionDef test_extract_entities_batch
+125: FunctionDef test_extract_entities_batch_empty
+129: FunctionDef test_model_name_tracking
+134: FunctionDef test_model_reuse
+150: FunctionDef setup_method
+154: FunctionDef test_tag_from_github_domain
+165: FunctionDef test_tag_from_slack_domain
+173: FunctionDef test_tag_from_app_name_vscode
+181: FunctionDef test_tag_from_app_name_figma
+189: FunctionDef test_tag_from_title_pull_request
+197: FunctionDef test_tag_from_title_standup
+204: FunctionDef test_tag_from_entities
+212: FunctionDef test_empty_activity
+218: FunctionDef test_tag_hierarchy
+224: FunctionDef test_parent_tag_lookup
+229: FunctionDef test_all_tags
+236: FunctionDef test_context_nested_url
+243: FunctionDef test_subdomain_matching
+258: FunctionDef setup_method
+262: FunctionDef test_correct_known_misspelling
+268: FunctionDef test_correct_microsoft_misspelling
+274: FunctionDef test_preserve_tech_term_kubectl
+278: FunctionDef test_preserve_tech_term_npm
+282: FunctionDef test_preserve_tech_term_fastapi
+286: FunctionDef test_fix_casing_javascript
+292: FunctionDef test_fix_casing_postgresql
+298: FunctionDef test_no_change_for_correct_name
+304: FunctionDef test_clean_artifacts_trailing_dots
+309: FunctionDef test_clean_artifacts_quotes
+314: FunctionDef test_correct_text_preserves_tech
+319: FunctionDef test_empty_input
+324: FunctionDef test_add_to_whitelist
+330: FunctionDef test_add_correction
+344: FunctionDef setup_method
+348: FunctionDef test_morning_classification
+355: FunctionDef test_afternoon_classification
+362: FunctionDef test_evening_classification
+369: FunctionDef test_night_classification
+376: FunctionDef test_work_hours
+384: FunctionDef test_non_work_hours
+391: FunctionDef test_weekend_detection
+399: FunctionDef test_day_of_week
+407: FunctionDef test_duration_categorization
+415: FunctionDef test_deep_duration
+423: FunctionDef test_session_label
+430: FunctionDef test_no_timestamp
+435: FunctionDef test_iso_string_timestamp
+442: FunctionDef test_temporal_patterns
+454: FunctionDef test_empty_patterns
+468: FunctionDef setup_method
+472: FunctionDef test_exact_match
+483: FunctionDef test_exact_match_same_platform
+493: FunctionDef test_alias_matching_person
+503: FunctionDef test_alias_matching_org
+512: FunctionDef test_no_match
+522: FunctionDef test_label_mismatch
+533: FunctionDef test_batch_resolve
+544: FunctionDef test_batch_empty
+550: FunctionDef test_fuzzy_match_person
+561: FunctionDef test_empty_entity
+574: FunctionDef setup_method
+582: FunctionDef test_document_type_code
+589: FunctionDef test_document_type_email
+596: FunctionDef test_document_type_chat
+603: FunctionDef test_document_type_meeting
+610: FunctionDef test_url_parsing
+618: FunctionDef test_git_context_github
+628: FunctionDef test_git_context_gitlab
+636: FunctionDef test_urgency_high
+643: FunctionDef test_urgency_medium
+650: FunctionDef test_urgency_low
+657: FunctionDef test_empty_activity
+671: FunctionDef setup_method
+681: FunctionDef test_full_pipeline_github_activity
+711: FunctionDef test_full_pipeline_vscode_activity
+732: FunctionDef test_full_pipeline_meeting_activity
+749: FunctionDef test_pipeline_empty_activity
+755: FunctionDef test_pipeline_batch
+764: FunctionDef test_pipeline_stages_list
+773: FunctionDef test_pipeline_metadata_timing
+785: FunctionDef test_pipeline_entity_count
+803: FunctionDef test_event_bus_has_enriched_method
+808: FunctionDef test_event_bus_has_failed_method
+
+## tests/test_module3_knowledge_graph.py
+28: FunctionDef expertise_service
+33: FunctionDef learning_path_service
+38: FunctionDef link_prediction_service
+43: FunctionDef schema_service
+48: FunctionDef subgraph_service
+53: FunctionDef sample_entities
+79: FunctionDef sample_adjacency
+109: FunctionDef test_build_skill_profile
+119: FunctionDef test_skill_profile_scores_normalized
+127: FunctionDef test_skill_profile_excludes_non_skill_types
+134: FunctionDef test_skill_profile_category_detection
+143: FunctionDef test_skill_profile_empty_entities
+149: FunctionDef test_skill_diversity
+155: FunctionDef test_rank_expertise
+166: FunctionDef test_rank_expertise_by_topic
+174: FunctionDef test_rank_expertise_with_centrality
+184: FunctionDef test_skill_gap_analysis
+204: FunctionDef test_skill_gap_all_met
+215: FunctionDef test_cross_domain_bridges
+223: FunctionDef test_expertise_timeline
+232: FunctionDef test_get_skill_category
+238: FunctionDef test_get_all_categories
+254: FunctionDef adjacency
+299: FunctionDef test_find_learning_paths
+312: FunctionDef test_find_paths_same_node
+321: FunctionDef test_find_shortest_path
+332: FunctionDef test_shortest_path_no_path
+342: FunctionDef test_recommend_paths
+357: FunctionDef test_recommend_paths_no_skills
+364: FunctionDef test_score_path
+383: FunctionDef test_score_path_all_known
+393: FunctionDef test_infer_prerequisites_temporal
+410: FunctionDef test_infer_prerequisites_frequency
+426: FunctionDef test_infer_prerequisites_min_strength
+441: FunctionDef test_difficulty_estimation
+458: FunctionDef adjacency
+468: FunctionDef test_common_neighbors
+476: FunctionDef test_common_neighbors_none
+481: FunctionDef test_jaccard_coefficient
+491: FunctionDef test_jaccard_empty
+497: FunctionDef test_adamic_adar
+504: FunctionDef test_preferential_attachment
+512: FunctionDef test_embedding_similarity
+523: FunctionDef test_embedding_similarity_missing
+529: FunctionDef test_predict_link
+539: FunctionDef test_predict_link_already_connected
+544: FunctionDef test_predict_top_links
+553: FunctionDef test_predict_top_links_exclude_existing
+563: FunctionDef test_batch_predict
+578: FunctionDef test_cosine_similarity
+589: FunctionDef test_custom_weights
+605: FunctionDef test_initial_schema
+611: FunctionDef test_get_node_types
+619: FunctionDef test_get_relationship_types
+627: FunctionDef test_get_node_schema
+634: FunctionDef test_get_node_schema_not_found
+638: FunctionDef test_validate_node_valid
+644: FunctionDef test_validate_node_missing_required
+650: FunctionDef test_validate_node_unknown_type
+655: FunctionDef test_validate_node_unknown_properties
+663: FunctionDef test_validate_relationship_valid
+670: FunctionDef test_validate_relationship_invalid_source
+677: FunctionDef test_validate_relationship_wildcard
+684: FunctionDef test_add_node_type
+694: FunctionDef test_add_node_type_duplicate
+699: FunctionDef test_add_relationship_type
+709: FunctionDef test_bump_version_minor
+718: FunctionDef test_bump_version_major
+723: FunctionDef test_bump_version_patch
+728: FunctionDef test_diff_versions
+738: FunctionDef test_diff_versions_single
+743: FunctionDef test_export_schema
+750: FunctionDef test_export_schema_json
+758: FunctionDef test_version_history
+769: FunctionDef test_statistics
+786: FunctionDef adjacency
+797: FunctionDef test_ego_network_1hop
+810: FunctionDef test_ego_network_2hop
+819: FunctionDef test_ego_network_max_nodes
+826: FunctionDef test_ego_network_statistics
+835: FunctionDef test_path_subgraph
+849: FunctionDef test_path_subgraph_no_path
+855: FunctionDef test_topic_subgraph
+878: FunctionDef test_topic_subgraph_no_neighbors
+891: FunctionDef test_temporal_subgraph
+914: FunctionDef test_filtered_subgraph_by_type
+933: FunctionDef test_filtered_subgraph_by_degree
+945: FunctionDef test_subgraph_statistics
+954: FunctionDef test_bfs_distances
+
+## tests/test_module4_ai_assistant.py
+28: FunctionDef conv_service
+33: FunctionDef rag_service
+75: FunctionDef insights_service
+80: FunctionDef export_service
+85: FunctionDef rec_service
+90: FunctionDef sample_conversation
+116: FunctionDef daily_metrics
+130: FunctionDef historical_metrics
+148: FunctionDef test_create_conversation
+155: FunctionDef test_create_conversation_default_title
+159: FunctionDef test_get_conversation
+165: FunctionDef test_get_conversation_not_found
+169: FunctionDef test_list_conversations
+176: FunctionDef test_list_conversations_excludes_archived
+183: FunctionDef test_archive_conversation
+188: FunctionDef test_delete_conversation
+193: FunctionDef test_delete_nonexistent
+196: FunctionDef test_update_conversation
+201: FunctionDef test_add_message
+207: FunctionDef test_auto_title_from_first_message
+213: FunctionDef test_auto_create_conversation_on_message
+219: FunctionDef test_get_messages
+228: FunctionDef test_get_memory_context
+239: FunctionDef test_get_memory_context_no_summary_needed
+245: FunctionDef test_build_llm_messages
+256: FunctionDef test_conversation_stats
+266: FunctionDef test_generate_title_long
+270: FunctionDef test_generate_title_sentence
+274: FunctionDef test_message_to_llm_format
+287: FunctionDef test_retrieve_keyword
+292: FunctionDef test_retrieve_with_collections
+297: FunctionDef test_retrieve_no_results
+301: FunctionDef test_retrieve_with_filters
+308: FunctionDef test_semantic_search
+316: FunctionDef test_semantic_search_no_embeddings
+324: FunctionDef test_build_augmented_prompt
+332: FunctionDef test_format_response_with_citations
+342: FunctionDef test_format_response_no_citations
+346: FunctionDef test_smart_search
+352: FunctionDef test_smart_search_no_results
+356: FunctionDef test_add_documents
+363: FunctionDef test_get_collections
+368: FunctionDef test_collection_stats
+373: FunctionDef test_citation_model
+387: FunctionDef test_cosine_similarity
+393: FunctionDef test_extract_best_snippet
+405: FunctionDef test_generate_daily_insights
+413: FunctionDef test_generate_insights_no_history
+417: FunctionDef test_focus_above_average
+424: FunctionDef test_focus_streak_detection
+431: FunctionDef test_long_hours_anomaly
+445: FunctionDef test_achievement_milestone
+456: FunctionDef test_diverse_skills_insight
+467: FunctionDef test_meeting_heavy_day
+479: FunctionDef test_generate_weekly_insights
+490: FunctionDef test_weekly_workload_increase
+497: FunctionDef test_heavy_meeting_week
+503: FunctionDef test_get_active_insights
+508: FunctionDef test_get_active_insights_filter_category
+515: FunctionDef test_dismiss_insight
+521: FunctionDef test_dismiss_nonexistent
+524: FunctionDef test_insight_stats
+530: FunctionDef test_deduplication
+536: FunctionDef test_insight_priority_range
+541: FunctionDef test_insight_model
+554: FunctionDef test_wellness_extended_work
+568: FunctionDef test_export_markdown
+576: FunctionDef test_export_json
+584: FunctionDef test_export_txt
+590: FunctionDef test_export_pdf_html
+596: FunctionDef test_export_unsupported
+600: FunctionDef test_export_with_citations
+604: FunctionDef test_filename_generation
+609: FunctionDef test_export_all
+614: FunctionDef test_export_combined_markdown
+621: FunctionDef test_export_combined_json
+630: FunctionDef test_export_stats
+636: FunctionDef test_export_empty_conversation
+648: FunctionDef test_recommend_tools
+657: FunctionDef test_recommend_tools_with_activity
+666: FunctionDef test_recommend_tools_unknown_skill
+670: FunctionDef test_recommend_workflows_low_focus
+682: FunctionDef test_recommend_workflows_high_context_switches
+693: FunctionDef test_recommend_workflows_short_sessions
+704: FunctionDef test_recommend_collaborators
+716: FunctionDef test_recommend_collaborators_exclude_existing
+726: FunctionDef test_recommend_learning_career_goals
+734: FunctionDef test_recommend_learning_low_proficiency
+742: FunctionDef test_recommend_learning_trending
+749: FunctionDef test_recommend_time_management_no_breaks
+758: FunctionDef test_recommend_time_management_long_session
+767: FunctionDef test_recommend_time_management_peak_hours
+777: FunctionDef test_get_all_recommendations
+800: FunctionDef test_max_recommendations_limit
+823: FunctionDef test_workflow_low_deep_work_ratio
+
+## tests/test_module5_personal_analytics.py
+29: FunctionDef career_service
+34: FunctionDef wellness_service
+39: FunctionDef goal_service
+44: FunctionDef skill_history
+55: FunctionDef user_skills
+69: FunctionDef daily_wellness_data
+87: FunctionDef test_analyze_trajectory
+94: FunctionDef test_trajectory_empty
+99: FunctionDef test_trajectory_high_hours
+104: FunctionDef test_trajectory_leading
+109: FunctionDef test_trajectory_declining
+114: FunctionDef test_role_readiness_fullstack
+120: FunctionDef test_role_readiness_unknown_role
+125: FunctionDef test_role_readiness_high
+132: FunctionDef test_role_readiness_early
+136: FunctionDef test_skill_gaps_analysis
+142: FunctionDef test_skill_gaps_specific_roles
+146: FunctionDef test_growth_velocity
+156: FunctionDef test_growth_velocity_empty
+161: FunctionDef test_growth_velocity_short
+165: FunctionDef test_detect_milestones
+170: FunctionDef test_detect_milestones_none
+174: FunctionDef test_detect_milestones_multiple
+178: FunctionDef test_get_current_milestone
+184: FunctionDef test_get_current_milestone_max
+189: FunctionDef test_career_report
+203: FunctionDef test_group_by_domain
+215: FunctionDef test_work_life_balance
+222: FunctionDef test_work_life_balance_empty
+227: FunctionDef test_work_life_balance_excellent
+235: FunctionDef test_work_life_balance_poor
+246: FunctionDef test_burnout_risk_low
+255: FunctionDef test_burnout_risk_high
+265: FunctionDef test_burnout_overwork_streak
+271: FunctionDef test_burnout_empty
+275: FunctionDef test_burnout_increasing_workload
+286: FunctionDef test_energy_levels
+295: FunctionDef test_energy_levels_empty
+299: FunctionDef test_energy_inactive_hours
+304: FunctionDef test_stress_index_low
+312: FunctionDef test_stress_index_high
+321: FunctionDef test_rest_patterns
+326: FunctionDef test_rest_patterns_empty
+330: FunctionDef test_rest_no_days_off
+335: FunctionDef test_wellness_report
+358: FunctionDef test_create_goal
+366: FunctionDef test_get_goal
+372: FunctionDef test_get_goal_not_found
+375: FunctionDef test_list_goals
+381: FunctionDef test_list_goals_filter_category
+388: FunctionDef test_list_goals_exclude_archived
+395: FunctionDef test_update_goal
+401: FunctionDef test_update_goal_not_found
+404: FunctionDef test_delete_goal
+409: FunctionDef test_delete_not_found
+412: FunctionDef test_update_progress
+418: FunctionDef test_update_progress_autocomplete
+424: FunctionDef test_add_progress_increment
+430: FunctionDef test_milestone_detection
+441: FunctionDef test_complete_goal
+446: FunctionDef test_pause_resume_goal
+453: FunctionDef test_archive_goal
+458: FunctionDef test_goal_stats
+471: FunctionDef test_goal_stats_empty
+475: FunctionDef test_completion_streaks
+484: FunctionDef test_completion_streaks_empty
+488: FunctionDef test_overdue_detection
+495: FunctionDef test_upcoming_deadlines
+502: FunctionDef test_auto_update_productivity
+513: FunctionDef test_auto_update_skill
+523: FunctionDef test_auto_update_no_match
+540: FunctionDef test_basic_allocation
+551: FunctionDef test_allocation_empty
+556: FunctionDef test_allocation_percentages
+566: FunctionDef test_allocation_by_category
+581: FunctionDef test_basic_comparison
+602: FunctionDef test_empty_previous
+607: FunctionDef test_declining_trend
+622: FunctionDef test_inverse_metrics
+629: FunctionDef test_stable_trend
+635: FunctionDef test_ranking
+641: FunctionDef test_month_period_type
+
+## tests/test_module7_privacy_settings.py
+36: FunctionDef notif_service
+41: FunctionDef integ_service
+46: FunctionDef privacy_service
+56: FunctionDef test_get_defaults
+62: FunctionDef test_update_channels
+70: FunctionDef test_update_types
+77: FunctionDef test_set_channel
+82: FunctionDef test_set_type
+87: FunctionDef test_reset_to_defaults
+95: FunctionDef test_frequency_caps
+105: FunctionDef test_set_dnd
+111: FunctionDef test_dnd_not_active_when_disabled
+114: FunctionDef test_dnd_active_overnight
+120: FunctionDef test_dnd_inactive_during_day
+126: FunctionDef test_dnd_active_early_morning
+131: FunctionDef test_dnd_override_critical
+139: FunctionDef test_should_send_basic
+143: FunctionDef test_should_not_send_disabled_channel
+148: FunctionDef test_should_not_send_disabled_type
+153: FunctionDef test_should_not_send_during_dnd
+160: FunctionDef test_critical_overrides_dnd
+166: FunctionDef test_hourly_cap
+177: FunctionDef test_digest_mode
+188: FunctionDef test_add_notification
+193: FunctionDef test_get_notifications
+199: FunctionDef test_get_unread_only
+206: FunctionDef test_mark_all_read
+213: FunctionDef test_delete_notification
+218: FunctionDef test_clear_all
+224: FunctionDef test_generate_digest
+239: FunctionDef test_list_available
+247: FunctionDef test_get_integration_info
+252: FunctionDef test_unknown_integration
+258: FunctionDef test_connect
+263: FunctionDef test_connect_unknown_raises
+267: FunctionDef test_disconnect
+273: FunctionDef test_reconnect
+279: FunctionDef test_get_all_connections
+289: FunctionDef test_record_sync_success
+295: FunctionDef test_record_sync_failure
+301: FunctionDef test_error_state_after_failures
+308: FunctionDef test_sync_history
+315: FunctionDef test_set_sync_frequency
+321: FunctionDef test_needs_sync_no_history
+325: FunctionDef test_needs_sync_manual
+333: FunctionDef test_set_data_permissions
+339: FunctionDef test_get_data_permissions
+347: FunctionDef test_health_connected
+353: FunctionDef test_health_not_connected
+357: FunctionDef test_health_expired_token
+364: FunctionDef test_health_recommendations
+370: FunctionDef test_get_all_health
+383: FunctionDef test_get_defaults
+389: FunctionDef test_update_filtering
+396: FunctionDef test_update_encryption
+403: FunctionDef test_update_retention
+411: FunctionDef test_update_data_collection
+418: FunctionDef test_reset_to_defaults
+429: FunctionDef test_get_retention_policy
+433: FunctionDef test_compute_purge_cutoff
+438: FunctionDef test_purge_cutoff_forever
+444: FunctionDef test_identify_purgeable
+455: FunctionDef test_identify_purgeable_forever
+466: FunctionDef test_detect_credit_card
+471: FunctionDef test_detect_ssn
+476: FunctionDef test_detect_email
+481: FunctionDef test_detect_no_pii
+485: FunctionDef test_detect_empty
+489: FunctionDef test_filter_pii
+495: FunctionDef test_filter_respects_settings
+509: FunctionDef test_generate_export_json
+518: FunctionDef test_export_history
+523: FunctionDef test_export_creates_audit_entry
+531: FunctionDef test_settings_update_logged
+539: FunctionDef test_reset_logged
+544: FunctionDef test_audit_summary
+
+## tests/test_load_stress.py
+34: FunctionDef search_service
+39: FunctionDef event_store
+44: FunctionDef rate_limiter
+53: FunctionDef test_insert_1000_vectors
+74: FunctionDef test_insert_5000_vectors
+93: FunctionDef test_search_latency_1000_vectors
+115: FunctionDef test_hybrid_search_under_load
+142: FunctionDef test_concurrent_searches
+154: FunctionDef do_search
+172: FunctionDef test_concurrent_writes
+176: FunctionDef do_write
+202: FunctionDef test_append_10000_events
+217: FunctionDef test_replay_from_100_events
+238: FunctionDef test_rapid_fire_requests
+253: FunctionDef test_multi_user_isolation
+263: FunctionDef test_stats_accuracy
+277: FunctionDef test_large_collection_optimize
+292: FunctionDef test_many_collections
+305: FunctionDef test_metrics_high_cardinality
+315: FunctionDef test_health_dashboard_rapid_checks
+
+## tests/test_module1_backend.py
+24: FunctionDef test_import
+29: FunctionDef test_constructor_no_db
+34: FunctionDef test_empty_summary_structure
+45: FunctionDef test_platform_categories_exist
+54: FunctionDef test_platform_categories_populated
+59: FunctionDef test_known_platforms_in_categories
+71: FunctionDef test_has_async_get_usage_summary
+78: FunctionDef test_has_async_get_daily_breakdown
+85: FunctionDef test_has_async_get_peak_hours
+92: FunctionDef test_build_summary_empty
+107: FunctionDef test_import
+112: FunctionDef test_constructor_no_db
+117: FunctionDef test_empty_summary_structure
+125: FunctionDef test_meeting_platforms_constant
+132: FunctionDef test_has_async_get_meeting_summary
+139: FunctionDef test_has_async_get_daily_breakdown
+146: FunctionDef test_has_async_get_meeting_free_blocks
+153: FunctionDef test_meeting_load_label
+159: FunctionDef test_build_summary_empty
+173: FunctionDef test_import
+178: FunctionDef test_constructor_no_db
+183: FunctionDef test_empty_summary_structure
+198: FunctionDef test_empty_summary_values
+211: FunctionDef test_has_async_get_focus_summary
+218: FunctionDef test_has_async_get_optimal_focus_times
+225: FunctionDef test_has_async_get_context_switch_analysis
+232: FunctionDef test_has_async_store_focus_sessions
+246: FunctionDef test_import
+250: FunctionDef test_router_has_routes
+262: FunctionDef test_import
+266: FunctionDef test_router_has_routes
+275: FunctionDef test_import
+280: FunctionDef test_constructor_no_db
+285: FunctionDef test_has_sync_fitbit
+292: FunctionDef test_has_sync_oura
+299: FunctionDef test_has_store_data_points
+306: FunctionDef test_has_wellness_dashboard
+313: FunctionDef test_metric_types_constant
+324: FunctionDef test_import
+328: FunctionDef test_helper_function_exists
+340: FunctionDef test_screenshots_router_registered
+346: FunctionDef test_wearables_router_registered
+351: FunctionDef test_all_services_importable
+
+## tests/test_module6_dashboards.py
+26: FunctionDef service
+31: FunctionDef sample_activities
+78: FunctionDef sample_daily_data
+89: FunctionDef sample_user_skills
+101: FunctionDef sample_skill_history
+115: FunctionDef test_overview_basic
+122: FunctionDef test_overview_with_activities
+129: FunctionDef test_overview_with_daily_data
+135: FunctionDef test_overview_goal_kpis
+140: FunctionDef test_overview_quick_actions_no_goals
+145: FunctionDef test_overview_quick_actions_overdue
+161: FunctionDef test_productivity_empty
+166: FunctionDef test_productivity_with_activities
+172: FunctionDef test_productivity_with_comparison
+185: FunctionDef test_productivity_ratio
+189: FunctionDef test_productivity_top_apps
+200: FunctionDef test_collaboration_empty
+205: FunctionDef test_collaboration_with_data
+230: FunctionDef test_skill_empty
+234: FunctionDef test_skill_with_user_skills
+240: FunctionDef test_skill_with_data
+254: FunctionDef test_skill_expertise_distribution
+271: FunctionDef test_career_with_skills
+277: FunctionDef test_career_recommendations
+281: FunctionDef test_career_empty_skills
+285: FunctionDef test_career_with_weekly_data
+297: FunctionDef test_wellness_with_data
+304: FunctionDef test_wellness_empty
+309: FunctionDef test_wellness_with_hourly
+315: FunctionDef test_wellness_burnout_details
+332: FunctionDef test_digest_basic
+339: FunctionDef test_digest_with_activities
+344: FunctionDef test_digest_with_daily_data
+348: FunctionDef test_digest_with_goals
+353: FunctionDef test_digest_week_offset
+357: FunctionDef test_digest_highlights_content
+369: FunctionDef test_export_json
+378: FunctionDef test_export_csv
+385: FunctionDef test_export_with_data
+399: FunctionDef test_export_filename_format
+404: FunctionDef test_export_csv_filename
+415: FunctionDef test_productivity_kpis_empty
+420: FunctionDef test_productivity_kpis_with_data
+425: FunctionDef test_quick_actions_default
+429: FunctionDef test_quick_actions_burnout
+433: FunctionDef test_career_recommendations
+442: FunctionDef test_to_csv
+
+## tests/test_e2e_integration.py
+27: FunctionDef search_service
+44: FunctionDef test_basic_search
+51: FunctionDef test_search_with_filters
+60: FunctionDef test_range_filter
+69: FunctionDef test_keyword_search
+76: FunctionDef test_hybrid_search
+85: FunctionDef test_hybrid_alpha_zero_is_keyword_only
+93: FunctionDef test_reranking
+102: FunctionDef test_diversity_sampling
+114: FunctionDef test_query_expansion
+122: FunctionDef test_faceted_search
+132: FunctionDef test_multi_collection_search
+149: FunctionDef test_create_collection
+154: FunctionDef test_create_duplicate_fails
+158: FunctionDef test_delete_collection
+163: FunctionDef test_optimize_collection
+174: FunctionDef test_payload_index
+178: FunctionDef test_list_collections
+184: FunctionDef test_stats
+202: FunctionDef event_store
+207: FunctionDef cmd_handler
+215: FunctionDef test_append_event
+221: FunctionDef test_get_events
+227: FunctionDef test_after_version_filter
+234: FunctionDef test_snapshots
+239: FunctionDef test_subscriber_notification
+245: FunctionDef test_subscribe_all
+252: FunctionDef test_stats
+260: FunctionDef test_record_activity
+268: FunctionDef test_activity_projection
+276: FunctionDef test_settings_change
+283: FunctionDef test_settings_audit_projection
+293: FunctionDef test_snapshot_on_interval
+315: FunctionDef gql
+343: FunctionDef test_activities_list
+348: FunctionDef test_activities_filter
+353: FunctionDef test_activity_pagination
+358: FunctionDef test_entities_list
+362: FunctionDef test_entities_filter_by_type
+366: FunctionDef test_productivity_summary
+370: FunctionDef test_collaboration_summary
+374: FunctionDef test_graph_nodes
+378: FunctionDef test_graph_edges
+382: FunctionDef test_graph_path
+387: FunctionDef test_search
+391: FunctionDef test_schema_info
+398: FunctionDef test_create_activity
+405: FunctionDef test_delete_activity
+411: FunctionDef test_update_settings
+415: FunctionDef test_add_entity
+431: FunctionDef rate_limiter
+436: FunctionDef test_initial_capacity
+440: FunctionDef test_consume
+446: FunctionDef test_refill
+452: FunctionDef test_time_until_available
+460: FunctionDef test_within_limit
+466: FunctionDef test_remaining
+473: FunctionDef test_allow_request
+478: FunctionDef test_burst_limit
+486: FunctionDef test_endpoint_limit
+494: FunctionDef test_concurrent_limit
+503: FunctionDef test_ip_rate_limiting
+509: FunctionDef test_user_usage
+514: FunctionDef test_reset_user
+520: FunctionDef test_stats
+525: FunctionDef test_tier_hierarchy
+542: FunctionDef test_init_stub
+547: FunctionDef test_capture_exception
+554: FunctionDef test_capture_message
+560: FunctionDef test_pii_scrubbing
+571: FunctionDef test_email_masking
+574: FunctionDef test_breadcrumbs
+580: FunctionDef test_tags_and_context
+590: FunctionDef test_counter
+598: FunctionDef test_gauge
+607: FunctionDef test_histogram
+615: FunctionDef test_registry
+622: FunctionDef test_prometheus_text_format
+632: FunctionDef test_liveness
+637: FunctionDef test_readiness_not_ready
+642: FunctionDef test_readiness_ok
+649: FunctionDef test_health_composite
+658: FunctionDef test_degraded_status
+664: FunctionDef test_unhealthy_status
+670: FunctionDef test_health_history
+678: FunctionDef test_uptime_report
+
+TOTAL_FUNCTIONS=2243

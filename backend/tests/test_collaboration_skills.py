@@ -12,8 +12,8 @@ import pytest
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from backend.services.collaboration_analytics_service import CollaborationAnalyticsService
-from backend.services.skill_analytics_service import SkillAnalyticsService
+from services.collaboration_analytics_service import CollaborationAnalyticsService
+from services.skill_analytics_service import SkillAnalyticsService
 
 
 # =============================================================================

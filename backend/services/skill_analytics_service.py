@@ -16,8 +16,8 @@ from typing import Dict, List, Optional, Any
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.database.neo4j_client import get_neo4j_driver
-from backend.database.redis_client import get_redis_client
+from database.neo4j_client import get_neo4j_driver
+from database.redis_client import get_redis_client
 
 logger = structlog.get_logger(__name__)
 

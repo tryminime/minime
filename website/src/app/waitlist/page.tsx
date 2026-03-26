@@ -22,7 +22,7 @@ export default function WaitlistPage() {
         setError('');
 
         try {
-            const response = await fetch('http://localhost:8000/api/v1/waitlist', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/waitlist`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

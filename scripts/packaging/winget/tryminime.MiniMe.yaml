@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.4.0.schema.json
+
+PackageIdentifier: tryminime.MiniMe
+PackageVersion: 0.2.0
+PackageName: MiniMe
+Publisher: MiniMe Technologies
+PublisherUrl: https://tryminime.com
+PublisherSupportUrl: https://tryminime.com/support
+PrivacyUrl: https://tryminime.com/legal/privacy
+Author: MiniMe Team
+License: Proprietary
+LicenseUrl: https://tryminime.com/legal/terms
+Copyright: Copyright © 2026 MiniMe Technologies
+ShortDescription: Privacy-first activity intelligence and knowledge graph platform
+Description: >
+  MiniMe runs quietly in the background, tracking your work activity locally
+  and building a private knowledge graph of your projects, skills, and focus.
+  All processing happens on-device — no raw data ever leaves your machine.
+Moniker: minime
+Tags:
+  - productivity
+  - activity-tracker
+  - knowledge-graph
+  - ai
+  - privacy
+ReleaseNotesUrl: https://github.com/tryminime/minime/releases/tag/v0.2.0
+Installers:
+  - Architecture: x64
+    InstallerType: nsis
+    InstallerUrl: https://github.com/tryminime/minime/releases/download/v0.2.0/MiniMe_0.2.0_x64-setup.exe
+    InstallerSha256: REPLACE_WITH_SHA256_OF_EXE
+    InstallerSwitches:
+      Silent: /S
+      SilentWithProgress: /S
+    ProductCode: '{MINIME-PRODUCT-CODE-GUID}'
+ManifestType: singleton
+ManifestVersion: 1.4.0

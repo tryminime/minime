@@ -7,7 +7,7 @@ import pytest
 import time
 from unittest.mock import patch, Mock
 
-from backend.services.centrality_service import CentralityService
+from services.centrality_service import CentralityService
 
 
 class TestCentralityPerformance:

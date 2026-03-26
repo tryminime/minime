@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch
 
-from backend.main import app
-from backend.models.user import User
+from main import app
+from models.user import User
 
 
 class TestGraphAPIEndpoints:

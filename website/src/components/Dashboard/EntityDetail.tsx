@@ -96,6 +96,34 @@ export function EntityDetail({ entity, onClose, onFindDuplicates }: EntityDetail
                     </div>
                 </div>
 
+                {/* Organization Intelligence — org_type + industry */}
+                {entity.entity_type === 'organization' && (entity.org_type || entity.industry) && (
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                            <Building2 className="w-4 h-4 text-purple-500" />
+                            Organization Intelligence
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2">
+                            {entity.org_type && (
+                                <div className="bg-purple-50 rounded-xl p-3">
+                                    <p className="text-xs text-purple-500 font-medium mb-1">Type</p>
+                                    <p className="text-sm font-semibold text-purple-800 capitalize">
+                                        {entity.org_type.replace(/_/g, ' ')}
+                                    </p>
+                                </div>
+                            )}
+                            {entity.industry && (
+                                <div className="bg-violet-50 rounded-xl p-3">
+                                    <p className="text-xs text-violet-500 font-medium mb-1">Industry</p>
+                                    <p className="text-sm font-semibold text-violet-800 capitalize">
+                                        {entity.industry}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Timestamps */}
                 <div className="space-y-2">
                     {displayEntity.first_seen && (

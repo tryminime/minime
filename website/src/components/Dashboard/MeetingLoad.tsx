@@ -26,9 +26,21 @@ export function MeetingLoad() {
         );
     }
 
-    // Calculate recommendation
     const meetingHours = data.total_meeting_hours;
     const deepWorkHours = data.total_deep_work_hours;
+
+    if (meetingHours === 0 && deepWorkHours === 0) {
+        return (
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold mb-4">Weekly Meeting Load</h3>
+                <div className="bg-gray-50 rounded p-8 text-center flex flex-col items-center justify-center h-48">
+                    <p className="text-gray-500 font-medium">No meeting or deep work data this week</p>
+                    <p className="text-xs text-gray-400 mt-1">Track activities to see your load balance</p>
+                </div>
+            </div>
+        );
+    }
+
     const ratio = deepWorkHours / (meetingHours || 1);
 
     let recommendation = '';

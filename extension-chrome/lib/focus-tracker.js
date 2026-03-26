@@ -267,7 +267,9 @@ class FocusPeriodTracker {
     }
 }
 
-// Export for use in background scripts
+// Export for use in background scripts (ES module + CommonJS compat)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { FocusPeriodTracker };
 }
+
+export { FocusPeriodTracker };

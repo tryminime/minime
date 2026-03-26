@@ -41,35 +41,35 @@ class EnrichmentPipeline:
     @property
     def nlp(self):
         if self._nlp is None:
-            from backend.services.nlp_service import nlp_service
-            self._nlp = nlp_service
+            from services.spacy_bert_ner import spacy_bert_ner
+            self._nlp = spacy_bert_ner
         return self._nlp
 
     @property
     def auto_tagger(self):
         if self._auto_tagger is None:
-            from backend.services.auto_tagger import auto_tagger
+            from services.auto_tagger import auto_tagger
             self._auto_tagger = auto_tagger
         return self._auto_tagger
 
     @property
     def spelling(self):
         if self._spelling is None:
-            from backend.services.spelling_correction import spelling_corrector
+            from services.spelling_correction import spelling_corrector
             self._spelling = spelling_corrector
         return self._spelling
 
     @property
     def temporal(self):
         if self._temporal is None:
-            from backend.services.temporal_enrichment import temporal_enricher
+            from services.temporal_enrichment import temporal_enricher
             self._temporal = temporal_enricher
         return self._temporal
 
     @property
     def resolver(self):
         if self._resolver is None:
-            from backend.services.cross_activity_resolver import cross_activity_resolver
+            from services.cross_activity_resolver import cross_activity_resolver
             self._resolver = cross_activity_resolver
         return self._resolver
 
@@ -112,7 +112,8 @@ class EnrichmentPipeline:
         # Stage 1: NER (Named Entity Recognition)
         stage_start = _time.time()
         try:
-            entities = self.nlp.extract_entities_enhanced(text_blob, context)
+            # The new SpacyBertNER service handles text+context internally and does language detection
+            entities = self.nlp.extract_entities(text_blob, context=context)
             result['entities'] = entities
             result['pipeline_metadata']['stages_completed'].append('ner')
         except Exception as e:
@@ -164,7 +165,9 @@ class EnrichmentPipeline:
         # Stage 5: Context Enrichment
         stage_start = _time.time()
         try:
-            ctx_enrichment = self.nlp.enrich_context(activity)
+            # We still need enrich_context from the old nlp_service, so we load it just for this
+            from services.nlp_service import nlp_service
+            ctx_enrichment = nlp_service.enrich_context(activity)
             result['context'] = ctx_enrichment
             result['pipeline_metadata']['stages_completed'].append('context')
         except Exception as e:

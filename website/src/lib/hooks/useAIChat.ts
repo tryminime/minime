@@ -257,6 +257,72 @@ export function useWeeklyAIReport() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Proactive Insights
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ProactiveInsight {
+    id: string;
+    category: string;
+    category_icon: string;
+    category_label: string;
+    title: string;
+    description: string;
+    priority: number;
+    data: Record<string, unknown>;
+    action?: { label: string; url: string };
+    dismissed: boolean;
+    source: string;
+    created_at: string;
+    expires_at: string;
+}
+
+export function useProactiveInsights() {
+    const api = getAPIClient();
+    return useQuery({
+        queryKey: ['ai-insights'],
+        queryFn: () =>
+            api.get<{ insights: ProactiveInsight[]; total: number }>(
+                '/api/ai/insights'
+            ),
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Milestone Celebrations
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Milestone {
+    id: string;
+    type: string;
+    emoji: string;
+    title: string;
+    message: string;
+    threshold: number;
+    current_value: number;
+    progress: number;
+    unlocked: boolean;
+}
+
+export function useMilestones() {
+    const api = getAPIClient();
+    return useQuery({
+        queryKey: ['ai-milestones'],
+        queryFn: () =>
+            api.get<{
+                milestones: Milestone[];
+                unlocked: Milestone[];
+                total_unlocked: number;
+                total_milestones: number;
+                metrics: Record<string, number>;
+            }>('/api/ai/milestones'),
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SSE Parsing Utility
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -264,23 +330,34 @@ export function useWeeklyAIReport() {
  * Parse a Server-Sent Events text blob into individual data payloads.
  * Backend sends: `data: {"chunk":"word ","conversation_id":"..."}\n\n`
  */
-export function parseSSEChunk(rawText: string): { chunks: string[]; done: boolean; conversationId?: string } {
+export function parseSSEChunk(rawText: string): { chunks: string[]; done: boolean; conversationId?: string; citations?: Citation[] } {
     const lines = rawText.split('\n');
     const chunks: string[] = [];
     let done = false;
     let conversationId: string | undefined;
+    let citations: Citation[] | undefined;
 
     for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         try {
             const payload = JSON.parse(line.slice(6));
             if (payload.chunk) chunks.push(payload.chunk);
-            if (payload.done) done = true;
+            if (payload.done) {
+                done = true;
+                // Extract citations from the done event
+                if (payload.citations && Array.isArray(payload.citations)) {
+                    citations = payload.citations.map((c: Record<string, unknown>) => ({
+                        source: (c.title as string) || (c.source as string) || 'Unknown source',
+                        excerpt: (c.snippet as string) || (c.excerpt as string) || undefined,
+                        relevance_score: (c.relevance_score as number) || undefined,
+                    }));
+                }
+            }
             if (payload.conversation_id) conversationId = payload.conversation_id;
         } catch {
             // Ignore malformed lines
         }
     }
 
-    return { chunks, done, conversationId };
+    return { chunks, done, conversationId, citations };
 }

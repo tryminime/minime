@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
-from backend.services.centrality_service import CentralityService, centrality_service
+from services.centrality_service import CentralityService, centrality_service
 
 
 class TestCentralityService:

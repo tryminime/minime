@@ -121,7 +121,7 @@ export function useKnowledgeGraph() {
         queryKey: ['knowledge', 'graph'],
         queryFn: async () => {
             const api = getAPIClient()
-            return await api.get('/api/v1/entities/entities?limit=50')
+            return await api.get('/api/v1/entities?limit=50')
         },
         staleTime: 60000,
     })
@@ -154,7 +154,7 @@ export function usePapers() {
         queryKey: ['papers'],
         queryFn: async () => {
             const api = getAPIClient()
-            return await api.get('/api/v1/entities/entities?limit=20')
+            return await api.get('/api/v1/entities?limit=20')
         },
         refetchInterval: 60000,
     })
@@ -165,7 +165,7 @@ export function useToggleTracking() {
     return useMutation({
         mutationFn: async () => {
             const api = getAPIClient()
-            return api.post('/api/v1/activities/sync')
+            return api.post('/api/v1/activities/batch', { source: 'desktop', activities: [] })
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -179,7 +179,7 @@ export function useSyncNow() {
     return useMutation({
         mutationFn: async () => {
             const api = getAPIClient()
-            return api.post('/api/v1/activities/sync')
+            return api.post('/api/v1/activities/batch', { source: 'desktop', activities: [] })
         },
         onSuccess: () => {
             queryClient.invalidateQueries()

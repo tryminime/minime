@@ -1,0 +1,52 @@
+# Maintainer: MiniMe Team <hello@tryminime.com>
+pkgname=minime-bin
+pkgver=0.2.0
+pkgrel=1
+pkgdesc="Privacy-first activity intelligence and knowledge graph platform"
+arch=('x86_64' 'aarch64')
+url="https://tryminime.com"
+license=('custom:Proprietary')
+depends=(
+    'webkit2gtk-4.1'
+    'libappindicator-gtk3'
+    'librsvg'
+    'gtk3'
+)
+provides=('minime')
+conflicts=('minime')
+options=('!strip')
+
+# Update source and sha256 for each release
+source_x86_64=("https://github.com/tryminime/minime/releases/download/v${pkgver}/minime-${pkgver}-linux-x86_64.tar.gz")
+source_aarch64=("https://github.com/tryminime/minime/releases/download/v${pkgver}/minime-${pkgver}-linux-aarch64.tar.gz")
+# Generate with: sha256sum minime-*-linux-*.tar.gz
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+    # Install main binary
+    install -Dm755 "minime" "${pkgdir}/usr/bin/minime"
+
+    # Desktop entry
+    cat > "${srcdir}/minime.desktop" <<EOF
+[Desktop Entry]
+Name=MiniMe
+Comment=Privacy-first activity intelligence platform
+Exec=minime
+Icon=minime
+Type=Application
+Categories=Productivity;Utility;
+StartupNotify=true
+EOF
+    install -Dm644 "${srcdir}/minime.desktop" "${pkgdir}/usr/share/applications/minime.desktop"
+
+    # Icons (install from release tarball if present)
+    if [ -f "minime.png" ]; then
+        install -Dm644 "minime.png" "${pkgdir}/usr/share/pixmaps/minime.png"
+    fi
+
+    # License
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE" <<EOF
+MiniMe is proprietary software. See https://tryminime.com/legal/terms
+EOF
+}

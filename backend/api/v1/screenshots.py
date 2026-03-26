@@ -14,8 +14,8 @@ from datetime import datetime
 from uuid import UUID, uuid4
 import structlog
 
-from backend.database.postgres import get_db
-from backend.auth.jwt_handler import get_current_user as get_current_user_from_token
+from database.postgres import get_db
+from auth.jwt_handler import get_current_user as get_current_user_from_token
 
 logger = structlog.get_logger()
 router = APIRouter()

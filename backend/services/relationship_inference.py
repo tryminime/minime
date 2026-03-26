@@ -12,9 +12,9 @@ import math
 
 from prometheus_client import Counter as PrometheusCounter, Histogram, Gauge
 
-from backend.models.graph_models import NodeType, RelationshipType
-from backend.services.graph_ingestion import graph_ingestion_service
-from backend.services.relationship_validator import relationship_validator
+from models.graph_models import NodeType, RelationshipType
+from services.graph_ingestion import graph_ingestion_service
+from services.relationship_validator import relationship_validator
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,22 @@ inference_candidates_evaluated = PrometheusCounter(
 # ENTITY TYPE PAIR TO RELATIONSHIP MAPPING
 # ============================================================================
 
+# ─── Activity type → relationship signal mapping ─────────────────────────────
+# Maps activity types (from MiniMe tracker) to relevant relationship signals
+ACTIVITY_TYPE_SIGNALS = {
+    'reading_analytics': 'reading',
+    'app_focus':         'usage',
+    'video_watching':    'watching',
+    'social_media':      'social',
+    'search_query':      'research',
+    'code_edit':         'coding',
+    'document_edit':     'editing',
+}
+
+# Session gap: activities within this window are considered same-session
+SESSION_GAP_MINUTES = 30
+
+
 ENTITY_PAIR_TO_RELATIONSHIP = {
     # Co-occurrence patterns
     (NodeType.PERSON, NodeType.PERSON): [
@@ -60,7 +76,7 @@ ENTITY_PAIR_TO_RELATIONSHIP = {
     ],
     (NodeType.PERSON, NodeType.PAPER): [
         (RelationshipType.AUTHORED, "co_occurrence"),
-        (RelationshipType.WORKS_ON, "co_occurrence")  # If paper topic matches person's work
+        (RelationshipType.WORKS_ON, "co_occurrence")
     ],
     (NodeType.PERSON, NodeType.TOPIC): [
         (RelationshipType.WORKS_ON, "co_occurrence")
@@ -72,6 +88,26 @@ ENTITY_PAIR_TO_RELATIONSHIP = {
     (NodeType.PERSON, NodeType.INSTITUTION): [
         (RelationshipType.AFFILIATED_WITH, "co_occurrence")
     ],
+    # ── Organisation relationships ──────────────────────────────────────────
+    # User spent time on a platform/org → they "used" or are affiliated with it
+    (NodeType.PERSON, NodeType.ORGANIZATION): [
+        (RelationshipType.AFFILIATED_WITH, "co_occurrence"),
+        (RelationshipType.WORKS_ON, "co_occurrence"),
+    ],
+    (NodeType.PROJECT, NodeType.ORGANIZATION): [
+        (RelationshipType.USES, "mention"),
+        (RelationshipType.AFFILIATED_WITH, "co_occurrence"),
+    ],
+    (NodeType.TOPIC, NodeType.ORGANIZATION): [
+        (RelationshipType.RELATED_TO, "co_occurrence"),
+    ],
+    (NodeType.INSTITUTION, NodeType.ORGANIZATION): [
+        (RelationshipType.RELATED_TO, "co_occurrence"),
+    ],
+    (NodeType.TOOL, NodeType.ORGANIZATION): [
+        (RelationshipType.AFFILIATED_WITH, "mention"),
+    ],
+    # ── Existing paper / project pairs ─────────────────────────────────────
     (NodeType.PAPER, NodeType.PAPER): [
         (RelationshipType.CITES, "citation"),
         (RelationshipType.RELATED_TO, "co_occurrence")
@@ -102,6 +138,26 @@ ENTITY_PAIR_TO_RELATIONSHIP = {
     ],
     (NodeType.TOOL, NodeType.TOOL): [
         (RelationshipType.DEPENDS_ON, "mention")
+    ],
+    # ── Organization-aware pairs (activity-derived) ──────────────────────────
+    # USER ↔ ORG: user visited / worked at / learned from an organization
+    (NodeType.PERSON, NodeType.INSTITUTION): [
+        (RelationshipType.AFFILIATED_WITH, "co_occurrence")
+    ],
+    # PROJECT ↔ INSTITUTION: project is hosted / affiliated with org
+    (NodeType.PROJECT, NodeType.INSTITUTION): [
+        (RelationshipType.AFFILIATED_WITH, "mention")
+    ],
+    # TOPIC ↔ INSTITUTION: topic co-occurs with org (e.g., MIT + ML)
+    (NodeType.TOPIC, NodeType.INSTITUTION): [
+        (RelationshipType.RELATED_TO, "co_occurrence")
+    ],
+    (NodeType.TOOL, NodeType.INSTITUTION): [
+        (RelationshipType.AFFILIATED_WITH, "mention")
+    ],
+    # PAPER ↔ INSTITUTION: paper published from org's researchers
+    (NodeType.PAPER, NodeType.INSTITUTION): [
+        (RelationshipType.AFFILIATED_WITH, "co_occurrence")
     ],
 }
 
@@ -503,79 +559,344 @@ class RelationshipInferenceService:
             if datetime.fromisoformat(act.get("timestamp", "2000-01-01")) > cutoff_date
         ]
         
+        # Entity type index: pair_key → (type_a, type_b)
+        entity_type_index: Dict[Tuple[str, str], Tuple[str, str]] = {}
+
         # Extract co-occurrences from each activity
         for activity in recent_activities:
             entities = activity.get("entities", [])
             timestamp = datetime.fromisoformat(activity.get("timestamp", datetime.utcnow().isoformat()))
-            
+            act_type = activity.get("type", "app_focus")
+
+            # Context strength based on activity type (reading/coding = stronger signal)
+            act_strength_map = {
+                'reading_analytics': 1.2,
+                'code_edit': 1.3,
+                'document_edit': 1.2,
+                'app_focus': 1.0,
+                'video_watching': 0.9,
+                'social_media': 0.7,
+                'search_query': 1.1,
+            }
+            context_strength = act_strength_map.get(act_type, 1.0) * activity.get('importance', 1.0)
+
             # Record all entity pairs in this activity
             for i in range(len(entities)):
                 for j in range(i + 1, len(entities)):
-                    entity_a_id = entities[i]["id"]
-                    entity_b_id = entities[j]["id"]
-                    
+                    entity_a = entities[i]
+                    entity_b = entities[j]
+                    entity_a_id = entity_a.get("id") or entity_a.get("name", f"ent_{i}")
+                    entity_b_id = entity_b.get("id") or entity_b.get("name", f"ent_{j}")
+
                     # Create canonical pair key (sorted)
                     pair_key = tuple(sorted([entity_a_id, entity_b_id]))
-                    
+
                     co_occurrence_tracker[pair_key]["count"] += 1
                     co_occurrence_tracker[pair_key]["timestamps"].append(timestamp)
                     co_occurrence_tracker[pair_key]["contexts"].append({
-                        "activity_type": activity.get("type"),
-                        "context_strength": activity.get("importance", 1.0)
+                        "activity_type": act_type,
+                        "context_strength": context_strength,
                     })
-        
+
+                    # Store entity types for later inference
+                    if pair_key not in entity_type_index:
+                        type_a = entity_a.get("entity_type") or entity_a.get("type", "TOPIC")
+                        type_b = entity_b.get("entity_type") or entity_b.get("type", "TOPIC")
+                        entity_type_index[pair_key] = (type_a.upper(), type_b.upper())
+
         # Infer relationships from co-occurrences
         all_inferred = []
-        
+
         for pair_key, occurrence_data in co_occurrence_tracker.items():
             # Skip if below minimum threshold
             if occurrence_data["count"] < self.min_co_occurrences:
                 continue
-            
+
             # Get most recent timestamp
             most_recent = max(occurrence_data["timestamps"])
-            
+
             # Average context strength
             avg_context_strength = sum(
                 ctx.get("context_strength", 1.0)
                 for ctx in occurrence_data["contexts"]
             ) / len(occurrence_data["contexts"])
-            
-            # Create entities list for inference
-            # Note: Would need to fetch full entity data in real implementation
-            entities = [
-                {"id": pair_key[0], "type": "PERSON"},  # Placeholder
-                {"id": pair_key[1], "type": "PAPER"}    # Placeholder
+
+            # Use actual entity types from index
+            types = entity_type_index.get(pair_key, ("TOPIC", "TOPIC"))
+            entities_for_inference = [
+                {"id": pair_key[0], "type": types[0]},
+                {"id": pair_key[1], "type": types[1]}
             ]
-            
+
             context = {
                 "frequency": occurrence_data["count"],
                 "timestamp": most_recent,
                 "context_strength": avg_context_strength,
                 "user_action": True
             }
-            
+
             # Infer relationships
             inferred = self.infer_relationships_from_co_occurrence(
                 user_id=user_id,
-                entities=entities,
+                entities=entities_for_inference,
                 context=context
             )
-            
+
             all_inferred.extend(inferred)
         
         elapsed = time.time() - start_time
-        
+
         inference_execution_time.labels(
             inference_method='batch_activity_log'
         ).observe(elapsed)
-        
+
         return {
             "inferred_count": len(all_inferred),
             "co_occurrence_pairs": len(co_occurrence_tracker),
             "activities_analyzed": len(recent_activities),
             "execution_time_sec": elapsed,
             "relationships": all_inferred
+        }
+
+    def infer_from_activity_sequence(
+        self,
+        user_id: str,
+        activity_log: List[Dict[str, Any]],
+        lookback_days: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Infer TEMPORAL relationships from activity sequence patterns.
+
+        Detects:
+        - USED_TOGETHER: entity pairs appearing in same session (within SESSION_GAP_MINUTES)
+        - CLOSELY_RELATED: entity pairs that co-occur across multiple separate sessions
+
+        Args:
+            user_id: User ID
+            activity_log: Time-ordered list of activities with entities
+            lookback_days: Lookback window
+
+        Returns:
+            Dict with inferred relationships and stats
+        """
+        import time as _time
+        start_time = _time.time()
+
+        cutoff_date = datetime.utcnow() - timedelta(days=lookback_days)
+        sorted_acts = sorted(
+            [a for a in activity_log
+             if datetime.fromisoformat(a.get('timestamp', '2000-01-01')) > cutoff_date],
+            key=lambda a: a.get('timestamp', '')
+        )
+
+        # Build sessions: group activities within SESSION_GAP_MINUTES of each other
+        sessions: List[List[Dict]] = []
+        current_session: List[Dict] = []
+        prev_ts: Optional[datetime] = None
+
+        for act in sorted_acts:
+            ts = datetime.fromisoformat(act.get('timestamp', datetime.utcnow().isoformat()))
+            if prev_ts is None or (ts - prev_ts).total_seconds() <= SESSION_GAP_MINUTES * 60:
+                current_session.append(act)
+            else:
+                if current_session:
+                    sessions.append(current_session)
+                current_session = [act]
+            prev_ts = ts
+        if current_session:
+            sessions.append(current_session)
+
+        # Track same-session pair occurrences
+        session_pair_counts: Dict[Tuple, int] = defaultdict(int)
+        session_pair_types: Dict[Tuple, Tuple[str, str]] = {}
+
+        for session in sessions:
+            session_entities: Dict[str, str] = {}  # id → type
+            for act in session:
+                for ent in act.get('entities', []):
+                    eid = ent.get('id') or ent.get('name', '')
+                    etype = (ent.get('entity_type') or ent.get('type', 'TOPIC')).upper()
+                    if eid:
+                        session_entities[eid] = etype
+
+            entity_ids = list(session_entities.keys())
+            for i in range(len(entity_ids)):
+                for j in range(i + 1, len(entity_ids)):
+                    pair = tuple(sorted([entity_ids[i], entity_ids[j]]))
+                    session_pair_counts[pair] += 1
+                    if pair not in session_pair_types:
+                        session_pair_types[pair] = (
+                            session_entities[entity_ids[i]],
+                            session_entities[entity_ids[j]]
+                        )
+
+        inferred = []
+        now = datetime.utcnow()
+
+        for pair, count in session_pair_counts.items():
+            if count < 1:
+                continue
+
+            rel_type = 'RELATED_TO'  # Fallback; maps to RelationshipType.RELATED_TO
+            confidence = min(0.9, 0.55 + count * 0.07)  # More sessions = higher confidence
+            weight = min(3.0, 1.0 + count * 0.3)
+            method = 'temporal_session'
+
+            inferred.append({
+                'from_id': pair[0],
+                'from_type': session_pair_types.get(pair, ('TOPIC', 'TOPIC'))[0],
+                'to_id': pair[1],
+                'to_type': session_pair_types.get(pair, ('TOPIC', 'TOPIC'))[1],
+                'rel_type': rel_type,
+                'weight': weight,
+                'confidence': confidence,
+                'source': ['inference'],
+                'inference_method': method,
+                'inferred': True,
+                'session_count': count,
+                'timestamp': now.isoformat(),
+            })
+
+            inference_relationships_total.labels(
+                relationship_type=rel_type,
+                inference_method=method
+            ).inc()
+
+        elapsed = _time.time() - start_time
+        inference_execution_time.labels(inference_method='temporal_sequence').observe(elapsed)
+
+        return {
+            'inferred_count': len(inferred),
+            'sessions_analyzed': len(sessions),
+            'execution_time_sec': elapsed,
+            'relationships': inferred,
+        }
+
+    def infer_learning_relationships(
+        self,
+        user_id: str,
+        activity_log: List[Dict[str, Any]],
+        lookback_days: int = 90
+    ) -> Dict[str, Any]:
+        """
+        Infer LEARNED_FROM, CONTRIBUTED_TO, and WORKED_ON relationships
+        using activity type as a signal for the nature of the interaction.
+
+        - LEARNED_FROM: reading/research activities on educational orgs
+        - CONTRIBUTED_TO: coding/editing activities on repos or projects
+        - WORKED_ON: repeated app_focus on the same project/tool
+
+        Args:
+            user_id: User ID
+            activity_log: Activity list with entities and type fields
+            lookback_days: Lookback window
+
+        Returns:
+            Dict with inferred relationships and stats
+        """
+        import time as _time
+        start_time = _time.time()
+
+        cutoff_date = datetime.utcnow() - timedelta(days=lookback_days)
+        recent = [
+            a for a in activity_log
+            if datetime.fromisoformat(a.get('timestamp', '2000-01-01')) > cutoff_date
+        ]
+
+        # Buckets: (entity_id, rel_type) → {count, confidence_sum, timestamps}
+        learning_buckets: Dict[str, Dict] = defaultdict(lambda: {
+            'count': 0, 'confidence_sum': 0.0, 'timestamps': [],
+            'entity_type': 'INSTITUTION', 'rel_type': 'RELATED_TO'
+        })
+
+        for act in recent:
+            act_type = act.get('type', 'app_focus')
+            signal = ACTIVITY_TYPE_SIGNALS.get(act_type, 'usage')
+            ts = act.get('timestamp', datetime.utcnow().isoformat())
+
+            for ent in act.get('entities', []):
+                eid = ent.get('id') or ent.get('name', '')
+                if not eid:
+                    continue
+                etype = (ent.get('entity_type') or ent.get('type', '')).lower()
+                org_type = ent.get('org_type', '')
+
+                # LEARNED_FROM: reading/research on educational orgs or research domains
+                if signal in ('reading', 'research') and etype in ('organization', 'institution'):
+                    conf = 0.72 if org_type in ('educational', 'open_source', 'community') else 0.55
+                    key = f"{eid}|LEARNED_FROM"
+                    learning_buckets[key]['count'] += 1
+                    learning_buckets[key]['confidence_sum'] += conf
+                    learning_buckets[key]['timestamps'].append(ts)
+                    learning_buckets[key]['entity_id'] = eid
+                    learning_buckets[key]['entity_type'] = 'INSTITUTION'
+                    learning_buckets[key]['rel_type'] = 'RELATED_TO'  # Semantic: learned from
+                    learning_buckets[key]['label'] = 'LEARNED_FROM'
+
+                # CONTRIBUTED_TO: coding on a project/repo
+                elif signal in ('coding', 'editing') and etype in ('project', 'artifact'):
+                    key = f"{eid}|CONTRIBUTED_TO"
+                    learning_buckets[key]['count'] += 1
+                    learning_buckets[key]['confidence_sum'] += 0.75
+                    learning_buckets[key]['timestamps'].append(ts)
+                    learning_buckets[key]['entity_id'] = eid
+                    learning_buckets[key]['entity_type'] = 'PROJECT'
+                    learning_buckets[key]['rel_type'] = 'CONTRIBUTES_TO'
+                    learning_buckets[key]['label'] = 'CONTRIBUTED_TO'
+
+                # WORKED_ON: repeated app_focus on same tool/project
+                elif signal == 'usage' and etype in ('project', 'artifact', 'skill'):
+                    key = f"{eid}|WORKED_ON"
+                    learning_buckets[key]['count'] += 1
+                    learning_buckets[key]['confidence_sum'] += 0.60
+                    learning_buckets[key]['timestamps'].append(ts)
+                    learning_buckets[key]['entity_id'] = eid
+                    learning_buckets[key]['entity_type'] = 'PROJECT'
+                    learning_buckets[key]['rel_type'] = 'WORKS_ON'
+                    learning_buckets[key]['label'] = 'WORKED_ON'
+
+        inferred = []
+        now = datetime.utcnow()
+
+        for key, data in learning_buckets.items():
+            if data['count'] < self.min_co_occurrences:
+                continue
+
+            avg_conf = min(0.92, data['confidence_sum'] / data['count'])
+            # Boost confidence for higher frequency
+            frequency_boost = min(0.15, data['count'] * 0.02)
+            final_conf = min(0.95, avg_conf + frequency_boost)
+
+            rel = {
+                'from_id': user_id,
+                'from_type': 'PERSON',
+                'to_id': data.get('entity_id', ''),
+                'to_type': data.get('entity_type', 'INSTITUTION'),
+                'rel_type': data.get('rel_type', 'RELATED_TO'),
+                'weight': min(3.0, 1.0 + math.log10(max(1, data['count']))),
+                'confidence': final_conf,
+                'source': ['inference'],
+                'inference_method': 'activity_signal',
+                'inferred': True,
+                'activity_count': data['count'],
+                'label': data.get('label', ''),
+                'timestamp': now.isoformat(),
+            }
+            inferred.append(rel)
+
+            inference_relationships_total.labels(
+                relationship_type=rel['rel_type'],
+                inference_method='activity_signal'
+            ).inc()
+
+        elapsed = _time.time() - start_time
+        inference_execution_time.labels(inference_method='learning_relationships').observe(elapsed)
+
+        return {
+            'inferred_count': len(inferred),
+            'activities_analyzed': len(recent),
+            'execution_time_sec': elapsed,
+            'relationships': inferred,
         }
     
     def apply_confidence_thresholds(
@@ -594,15 +915,18 @@ class RelationshipInferenceService:
             Filtered relationships above threshold
         """
         if thresholds is None:
-            # Default thresholds
             thresholds = {
                 "AUTHORED": 0.7,
                 "CITES": 0.6,
                 "COLLABORATES_WITH": 0.65,
                 "USES": 0.6,
                 "WORKS_ON": 0.6,
+                "AFFILIATED_WITH": 0.6,
+                "CONTRIBUTES_TO": 0.55,
                 "ON_TOPIC": 0.55,
                 "RELATED_TO": 0.5,
+                "USED_TOGETHER": 0.55,
+                "LEARNED_FROM": 0.6,
                 "default": self.min_confidence
             }
         
@@ -619,6 +943,208 @@ class RelationshipInferenceService:
         )
         
         return filtered
+
+    def infer_from_activity_sequence(
+        self,
+        user_id: str,
+        activities: List[Dict[str, Any]],
+        session_gap_minutes: int = 30,
+    ) -> List[Dict[str, Any]]:
+        """
+        Infer temporal relationships from activity sequences.
+
+        Detects entity pairs that repeatedly co-occur within the same session
+        (within `session_gap_minutes` of each other) and creates USED_TOGETHER
+        relationships. Entities that *always* appear before another get a
+        PRECEDES relationship with decay-adjusted weight.
+
+        Args:
+            user_id: User ID for multi-tenancy
+            activities: Time-ordered list of activities, each with 'entities'
+                        and 'timestamp'.
+            session_gap_minutes: Max gap between activities to consider same session.
+
+        Returns:
+            List of inferred relationship dicts.
+        """
+        from collections import defaultdict
+
+        session_pairs: Dict[tuple, List[datetime]] = defaultdict(list)
+        before_counts: Dict[tuple, int] = defaultdict(int)  # (a,b) → a appeared before b
+
+        sorted_acts = sorted(
+            [a for a in activities if a.get("entities") and a.get("timestamp")],
+            key=lambda a: a["timestamp"]
+        )
+
+        # Sliding window to find session pairs
+        for i, act in enumerate(sorted_acts):
+            t_i = act["timestamp"]
+            if isinstance(t_i, str):
+                try:
+                    t_i = datetime.fromisoformat(t_i)
+                except ValueError:
+                    continue
+
+            for j in range(i + 1, len(sorted_acts)):
+                act_j = sorted_acts[j]
+                t_j = act_j["timestamp"]
+                if isinstance(t_j, str):
+                    try:
+                        t_j = datetime.fromisoformat(t_j)
+                    except ValueError:
+                        continue
+
+                gap_min = (t_j - t_i).total_seconds() / 60
+                if gap_min > session_gap_minutes:
+                    break  # beyond session window
+
+                for ea in (act.get("entities") or []):
+                    for eb in (act_j.get("entities") or []):
+                        if ea.get("id") == eb.get("id"):
+                            continue
+                        pair = (ea["id"], eb["id"])
+                        session_pairs[pair].append(t_i)
+                        before_counts[pair] += 1
+
+        inferred = []
+        now = datetime.utcnow()
+        for (id_a, id_b), timestamps in session_pairs.items():
+            if len(timestamps) < self.min_co_occurrences:
+                continue
+            most_recent = max(timestamps)
+            weight = self._compute_weight(
+                co_occurrence_count=len(timestamps),
+                timestamp=most_recent,
+                context_strength=0.9,
+            )
+            confidence = min(0.85, 0.55 + len(timestamps) * 0.05)
+            inferred.append({
+                "from_id": id_a,
+                "to_id": id_b,
+                "rel_type": "USED_TOGETHER",
+                "weight": weight,
+                "confidence": confidence,
+                "inference_method": "session_co_occurrence",
+                "inferred": True,
+                "session_count": len(timestamps),
+                "timestamp": most_recent.isoformat() if isinstance(most_recent, datetime) else most_recent,
+            })
+            inference_relationships_total.labels(
+                relationship_type="USED_TOGETHER",
+                inference_method="session_co_occurrence",
+            ).inc()
+
+        return inferred
+
+    def infer_learning_relationships(
+        self,
+        user_id: str,
+        activities: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Infer LEARNED_FROM, CONTRIBUTED_TO, and WORKED_ON relationships from
+        activity context and organisation metadata.
+
+        Rules:
+        - LEARNED_FROM: user read content from an educational org/domain
+          (org_type == 'educational' | 'open_source', activity type == reading_analytics)
+        - CONTRIBUTED_TO: user had coding activity on a GitHub-hosted project
+          (activity type involves github.com + project entity)
+        - WORKED_ON: user had >= 3 app_focus sessions with a project entity
+
+        Returns:
+            List of inferred relationship dicts.
+        """
+        from collections import defaultdict
+
+        learned_from: Dict[str, List] = defaultdict(list)    # org_name → timestamps
+        contributed_to: Dict[str, List] = defaultdict(list)  # project_id → timestamps
+        worked_on: Dict[str, List] = defaultdict(list)       # project_id → timestamps
+
+        for act in activities:
+            act_type = act.get("type", "")
+            entities = act.get("entities") or []
+            ts = act.get("timestamp", datetime.utcnow().isoformat())
+
+            for ent in entities:
+                etype = ent.get("entity_type", ent.get("type", ""))
+                org_type = ent.get("org_type", "")
+
+                # LEARNED_FROM: reading from educational/research org
+                if act_type in ("reading_analytics", "web_browsing") and etype == "organization":
+                    if org_type in ("educational", "open_source", "community", "media"):
+                        learned_from[ent.get("id", ent.get("name", ""))].append(ts)
+
+                # CONTRIBUTED_TO: code activity on GitHub
+                if act_type in ("app_focus", "code_editing") and etype == "project":
+                    if ent.get("source") == "url" or "github" in str(ent.get("name", "")).lower():
+                        contributed_to[ent.get("id", ent.get("name", ""))].append(ts)
+
+                # WORKED_ON: any focused project work
+                if act_type == "app_focus" and etype == "project":
+                    worked_on[ent.get("id", ent.get("name", ""))].append(ts)
+
+        inferred = []
+
+        for org_id, timestamps in learned_from.items():
+            if len(timestamps) < 1:
+                continue
+            confidence = min(0.85, 0.60 + len(timestamps) * 0.04)
+            inferred.append({
+                "from_id": user_id,
+                "to_id": org_id,
+                "rel_type": "LEARNED_FROM",
+                "weight": 1.0 + math.log10(max(1, len(timestamps))),
+                "confidence": confidence,
+                "inference_method": "reading_activity",
+                "inferred": True,
+                "session_count": len(timestamps),
+            })
+            inference_relationships_total.labels(
+                relationship_type="LEARNED_FROM",
+                inference_method="reading_activity",
+            ).inc()
+
+        for proj_id, timestamps in contributed_to.items():
+            if len(timestamps) < 2:
+                continue
+            confidence = min(0.85, 0.60 + len(timestamps) * 0.05)
+            inferred.append({
+                "from_id": user_id,
+                "to_id": proj_id,
+                "rel_type": "CONTRIBUTED_TO",
+                "weight": 1.0 + math.log10(max(1, len(timestamps))),
+                "confidence": confidence,
+                "inference_method": "coding_activity",
+                "inferred": True,
+                "session_count": len(timestamps),
+            })
+            inference_relationships_total.labels(
+                relationship_type="CONTRIBUTED_TO",
+                inference_method="coding_activity",
+            ).inc()
+
+        for proj_id, timestamps in worked_on.items():
+            if len(timestamps) < 3:
+                continue
+            confidence = min(0.80, 0.55 + len(timestamps) * 0.04)
+            inferred.append({
+                "from_id": user_id,
+                "to_id": proj_id,
+                "rel_type": "WORKS_ON",
+                "weight": 1.0 + math.log10(max(1, len(timestamps))),
+                "confidence": confidence,
+                "inference_method": "focus_activity",
+                "inferred": True,
+                "session_count": len(timestamps),
+            })
+            inference_relationships_total.labels(
+                relationship_type="WORKS_ON",
+                inference_method="focus_activity",
+            ).inc()
+
+        return inferred
 
 
 # Global service instance

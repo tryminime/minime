@@ -21,31 +21,61 @@ export interface MeetingStats {
     daily_count: { date: string; count: number; hours: number }[];
 }
 
+const MEETING_DOMAINS = [
+    'zoom.us', 'meet.google.com', 'teams.microsoft.com', 'teams.live.com',
+    'webex.com', 'gotomeeting.com', 'whereby.com', 'around.co',
+    'app.slack.com', // Slack huddles
+];
+
+function isMeetingDomain(domain: string | null): boolean {
+    if (!domain) return false;
+    const d = domain.replace(/^www\./, '').toLowerCase();
+    return MEETING_DOMAINS.some(s => d === s || d.endsWith('.' + s));
+}
+
+function detectPlatform(domain: string | null, app: string | null): string {
+    const d = (domain || '').toLowerCase();
+    if (d.includes('zoom')) return 'Zoom';
+    if (d.includes('meet.google')) return 'Google Meet';
+    if (d.includes('teams')) return 'Microsoft Teams';
+    if (d.includes('webex')) return 'Webex';
+    if (d.includes('slack')) return 'Slack';
+    if (d.includes('whereby')) return 'Whereby';
+    return app || domain || 'Unknown';
+}
+
 export function useMeetings() {
     const api = getAPIClient();
 
     return useQuery({
         queryKey: ['activities', 'meetings'],
         queryFn: async () => {
-            const data = await api.get<{ activities: ActivityItem[] }>('/api/v1/activities?type=meeting&limit=200');
-            const activities = data.activities || [];
+            // Fetch explicit meetings AND web_visit activities on meeting domains
+            const [meetingData, webData] = await Promise.all([
+                api.get<{ activities: ActivityItem[] }>('/api/v1/activities?type=meeting&limit=200').catch(() => ({ activities: [] })),
+                api.get<{ activities: ActivityItem[] }>('/api/v1/activities?type=web_visit&limit=500').catch(() => ({ activities: [] })),
+            ]);
 
+            const explicitMeetings = meetingData.activities || [];
+            const webMeetings = (webData.activities || []).filter(a => isMeetingDomain(a.domain));
+
+            const allActivities = [...explicitMeetings, ...webMeetings];
             const today = new Date().toISOString().split('T')[0];
 
-            const meetings: MeetingItem[] = activities.map(a => ({
+            const meetings: MeetingItem[] = allActivities.map(a => ({
                 id: a.id,
                 title: a.title || 'Meeting',
-                platform: a.app || a.domain || 'Unknown',
+                platform: detectPlatform(a.domain, a.app),
                 duration_minutes: Math.round((a.duration_seconds || 0) / 60),
                 created_at: a.created_at,
             }));
 
-            const totalSeconds = activities.reduce((sum, a) => sum + (a.duration_seconds || 0), 0);
+            const totalSeconds = allActivities.reduce((sum, a) => sum + (a.duration_seconds || 0), 0);
             const meetingsToday = meetings.filter(m => m.created_at.startsWith(today)).length;
 
             // Group by day
             const dailyMap: Record<string, { count: number; seconds: number }> = {};
-            activities.forEach(a => {
+            allActivities.forEach(a => {
                 const date = a.created_at.split('T')[0];
                 if (!dailyMap[date]) dailyMap[date] = { count: 0, seconds: 0 };
                 dailyMap[date].count += 1;
@@ -72,7 +102,8 @@ export function useMeetings() {
 
             return result;
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: 60 * 1000,
+        refetchInterval: 60 * 1000,
         retry: 2,
     });
 }

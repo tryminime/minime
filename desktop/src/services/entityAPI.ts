@@ -4,7 +4,7 @@
  * Handles all entity-related API calls for the desktop app.
  */
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 interface ListEntitiesParams {
     type?: string;
@@ -19,7 +19,7 @@ interface RequestOptions extends RequestInit {
 class EntityAPIService {
     async getAuthToken(): Promise<string | null> {
         // In a real app, this would get the token from auth context
-        return localStorage.getItem('authToken');
+        return localStorage.getItem('minime_auth_token');
     }
 
     async request(endpoint: string, options: RequestOptions = {}): Promise<any> {

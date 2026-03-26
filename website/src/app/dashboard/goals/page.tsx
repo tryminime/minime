@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Target, Plus, Trash2, CheckCircle, Clock, PauseCircle, X, Flame } from 'lucide-react';
 import { useGoals, useCreateGoal, useDeleteGoal, useUpdateGoal, Goal, GoalCreate } from '@/lib/hooks/useGoals';
 
@@ -20,7 +20,7 @@ const QUICK_GOALS: GoalCreate[] = [
 ];
 
 function GoalCard({ goal, onDelete, onToggle }: { goal: Goal; onDelete: (id: string) => void; onToggle: (id: string, status: string) => void }) {
-    const pct = Math.min(100, goal.target_value > 0 ? (goal.current_value / goal.target_value) * 100 : 0);
+    const pct = goal.target_value > 0 ? (goal.current_value / goal.target_value) * 100 : 0;
     const cat = CATEGORIES.find(c => c.id === goal.category) ?? CATEGORIES[4];
     const statusIcon = goal.status === 'completed'
         ? <CheckCircle className="w-4 h-4 text-emerald-500" />
@@ -65,10 +65,10 @@ function GoalCard({ goal, onDelete, onToggle }: { goal: Goal; onDelete: (id: str
                     </span>
                     <span className="text-sm font-semibold text-gray-900">{pct.toFixed(0)}%</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
+                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                     <div
-                        className={`h-2 rounded-full transition-all ${goal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                        style={{ width: `${pct}%` }}
+                        className={`h-full rounded-full transition-all ${goal.status === 'completed' || pct >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                        style={{ width: `${Math.min(100, pct)}%` }}
                     />
                 </div>
             </div>
@@ -195,11 +195,33 @@ function AddGoalSheet({ onClose }: { onClose: () => void }) {
     );
 }
 
+function QuickGoalButton({ goal }: { goal: GoalCreate }) {
+    const { mutate: create, isPending } = useCreateGoal();
+    return (
+        <button
+            disabled={isPending}
+            className="text-sm px-3 py-1.5 rounded-full border border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition-colors disabled:opacity-50 flex items-center gap-1"
+            onClick={() => create(goal)}
+        >
+            {isPending ? <Clock className="w-3 h-3 animate-spin" /> : '+'} {goal.title}
+        </button>
+    );
+}
+
 export default function GoalsPage() {
     const { data: goals = [], isLoading } = useGoals();
     const { mutate: deleteGoal } = useDeleteGoal();
     const { mutate: updateGoal } = useUpdateGoal();
     const [showAdd, setShowAdd] = useState(false);
+    const [showSkeleton, setShowSkeleton] = useState(false);
+
+    useEffect(() => {
+        if (isLoading) {
+            const t = setTimeout(() => setShowSkeleton(true), 200);
+            return () => clearTimeout(t);
+        }
+        setShowSkeleton(false);
+    }, [isLoading]);
 
     const active = goals.filter(g => g.status === 'active');
     const completed = goals.filter(g => g.status === 'completed');
@@ -237,7 +259,7 @@ export default function GoalsPage() {
                 ))}
             </div>
 
-            {isLoading ? (
+            {showSkeleton ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-gray-100 rounded-2xl animate-pulse" />)}
                 </div>
@@ -246,23 +268,17 @@ export default function GoalsPage() {
                 <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center">
                     <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <h3 className="text-lg font-semibold text-gray-700 mb-1">No goals yet</h3>
-                    <p className="text-gray-500 text-sm mb-5">Create your first goal to start tracking your progress</p>
+                    <p className="text-gray-500 text-sm mb-5">Quick-add a goal with one click, or create a custom one</p>
                     <div className="flex flex-wrap justify-center gap-2 mb-5">
                         {QUICK_GOALS.map(q => (
-                            <button
-                                key={q.title}
-                                className="text-sm px-3 py-1.5 rounded-full border border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition-colors"
-                                onClick={() => setShowAdd(true)}
-                            >
-                                + {q.title}
-                            </button>
+                            <QuickGoalButton key={q.title} goal={q} />
                         ))}
                     </div>
                     <button
                         onClick={() => setShowAdd(true)}
                         className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
                     >
-                        <Plus className="w-4 h-4 inline mr-1" />Create a Goal
+                        <Plus className="w-4 h-4 inline mr-1" />Custom Goal
                     </button>
                 </div>
             ) : (

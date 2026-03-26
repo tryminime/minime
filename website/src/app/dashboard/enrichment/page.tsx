@@ -2,90 +2,27 @@
 
 import { useState } from 'react';
 import {
-    Sparkles, LayoutDashboard, Tag, Network, GitMerge, Clock,
+    Sparkles, LayoutDashboard, Tag, GitMerge, Clock, Layers,
 } from 'lucide-react';
 import { EnrichmentStats } from '@/components/Dashboard/EnrichmentStats';
 import { EntityList } from '@/components/Dashboard/EntityList';
 import { EntityDetail } from '@/components/Dashboard/EntityDetail';
 import { DuplicateDetection } from '@/components/Dashboard/DuplicateDetection';
-import { EntityGraph } from '@/components/Dashboard/EntityGraph';
 import { ActivityTimeline } from '@/components/Dashboard/ActivityTimeline';
+import { CustomEntityTypesPanel } from '@/components/FeaturePanels';
 import type { EntityItem } from '@/lib/hooks/useEntities';
 import { useEntities } from '@/lib/hooks/useEntities';
 
 const TABS = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'entities', label: 'Entities', icon: Tag },
-    { id: 'graph', label: 'Knowledge Graph', icon: Network },
+    { id: 'types', label: 'Entity Types', icon: Layers },
     { id: 'duplicates', label: 'Duplicates', icon: GitMerge },
     { id: 'feed', label: 'Activity Feed', icon: Clock },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
 
-function GraphTab({ onSelectEntity }: { onSelectEntity?: (e: EntityItem) => void }) {
-    const [selectedId, setSelectedId] = useState<string | null>(null);
-    const { data } = useEntities(undefined, 50, 0);
-    const entities = data?.entities ?? [];
-
-    // Default to most frequent entity
-    const selected = selectedId
-        ? entities.find(e => e.id === selectedId)
-        : entities[0] ?? null;
-
-    if (entities.length === 0) {
-        return (
-            <div className="text-center py-16 text-gray-400">
-                <Network className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                <p className="font-medium">No entities to graph yet</p>
-                <p className="text-sm mt-1">
-                    The knowledge graph shows how entities co-occur across your activities.
-                </p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="space-y-4">
-            {/* Header + entity picker */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                        Knowledge Graph
-                        {selected && <span className="text-purple-600"> — {selected.name}</span>}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                        Co-occurrence links from PostgreSQL activity data • Click a node to explore
-                    </p>
-                </div>
-                <select
-                    value={selected?.id ?? ''}
-                    onChange={e => setSelectedId(e.target.value || null)}
-                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[180px]"
-                >
-                    {entities.map(e => (
-                        <option key={e.id} value={e.id}>
-                            {e.name} ({e.occurrence_count}×)
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            {selected && (
-                <EntityGraph
-                    entityId={selected.id}
-                    entityName={selected.name}
-                    entityType={selected.entity_type}
-                    onSelectEntity={onSelectEntity}
-                />
-            )}
-
-            <p className="text-xs text-gray-400 text-center">
-                Edge thickness = co-occurrence strength • Click any neighbor node to navigate to that entity
-            </p>
-        </div>
-    );
-}
 
 
 export default function EnrichmentPage() {
@@ -195,8 +132,10 @@ export default function EnrichmentPage() {
                     </div>
                 )}
 
-                {/* Knowledge Graph */}
-                {activeTab === 'graph' && <GraphTab onSelectEntity={handleSelectEntity} />}
+                {/* Entity Types */}
+                {activeTab === 'types' && <CustomEntityTypesPanel />}
+
+
 
                 {/* Duplicates */}
                 {activeTab === 'duplicates' && <DuplicateDetection />}

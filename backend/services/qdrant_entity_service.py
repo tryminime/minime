@@ -7,7 +7,7 @@ Handles:
 - Batch operations
 """
 
-from backend.database.qdrant_client import get_qdrant_client
+from database.qdrant_client import get_qdrant_client
 from typing import List, Dict, Optional
 from uuid import UUID
 import structlog

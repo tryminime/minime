@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -9,178 +9,566 @@
 </head>
 
 <body>
-    <div class="container">
-        <header>
-            <h1>🔒 MiniMe Settings</h1>
-            <p class="subtitle">Configure your privacy and tracking preferences</p>
-        </header>
 
-        <nav class="tabs">
-            <button class="tab-btn active" data-tab="privacy">Privacy</button>
-            <button class="tab-btn" data-tab="tracking">Tracking</button>
-            <button class="tab-btn" data-tab="sync">Sync</button>
-            <button class="tab-btn" data-tab="about">About</button>
-        </nav>
+    <div class="layout">
 
-        <!-- Privacy Tab -->
-        <section id="privacy-tab" class="tab-content">
-            <h2>Privacy Controls</h2>
+        <!-- ── Sidebar Navigation ──────────────────────────── -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <img src="../assets/MiniMe-onlyLogo.png" alt="MiniMe"
+                        style="width:26px;height:26px;object-fit:contain;display:block;">
+                </div>
+                <div class="sidebar-brand">
+                    <div class="sidebar-name">MiniMe</div>
+                    <div class="sidebar-sub">Extension Settings</div>
+                </div>
+            </div>
 
-            <div class="setting-group">
-                <h3>Blacklist (Never Track)</h3>
-                <p class="description">Domains in this list will never be tracked</p>
+            <span class="nav-section-label">General</span>
+            <button class="nav-btn active" data-panel="privacy">
+                <span class="nav-icon"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg></span> Privacy
+            </button>
+            <button class="nav-btn" data-panel="tracking">
+                <span class="nav-icon"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <path d="M18 20V10M12 20V4M6 20v-6" />
+                    </svg></span> Tracking
+            </button>
+            <button class="nav-btn" data-panel="sync">
+                <span class="nav-icon"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <polyline points="1 4 1 10 7 10" />
+                        <polyline points="23 20 23 14 17 14" />
+                        <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" />
+                    </svg></span> Sync &amp; API
+            </button>
 
-                <div class="input-group">
-                    <input type="text" id="blacklistInput" placeholder="example.com">
-                    <button id="addBlacklist" class="btn-primary">+ Add</button>
+            <span class="nav-section-label">Intelligence</span>
+            <button class="nav-btn" data-panel="ai">
+                <span class="nav-icon"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14M15.54 8.46a5 5 0 010 7.07M8.46 8.46a5 5 0 000 7.07" />
+                    </svg></span> AI &amp; RAG
+            </button>
+
+            <span class="nav-section-label">Info</span>
+            <button class="nav-btn" data-panel="about">
+                <span class="nav-icon"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg></span> About
+            </button>
+        </aside>
+
+        <!-- ── Main Content ─────────────────────────────────── -->
+        <main class="main">
+
+            <!-- ── Privacy ──────────────────────────────────── -->
+            <div id="panel-privacy" class="panel active">
+                <div class="content-header">
+                    <h1 class="content-title">Privacy Controls</h1>
+                    <p class="content-subtitle">Control what data MiniMe captures and which sites are excluded</p>
                 </div>
 
-                <ul id="blacklistList" class="domain-list"></ul>
-            </div>
-
-            <div class="setting-group">
-                <h3>Whitelist (Only Track These)</h3>
-                <p class="description">If enabled, only domains in this list will be tracked</p>
-
-                <label class="toggle">
-                    <input type="checkbox" id="whitelistEnabled">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Enable Whitelist Mode</span>
-                </label>
-
-                <div class="input-group">
-                    <input type="text" id="whitelistInput" placeholder="work-domain.com">
-                    <button id="addWhitelist" class="btn-primary">+ Add</button>
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#ef4444" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                        </svg> Never-Track Domains</div>
+                    <p class="card-desc">Activity on these domains is never captured, processed, or sent anywhere — not
+                        even locally.</p>
+                    <div class="input-row">
+                        <input type="text" id="blacklistInput" placeholder="example.com or *.bank.com">
+                        <button id="addBlacklist" class="btn btn-primary">+ Add</button>
+                    </div>
+                    <ul id="blacklistList" class="domain-list"></ul>
+                    <div id="blacklistEmpty" class="domain-list-empty" style="display:none">No domains added</div>
                 </div>
 
-                <ul id="whitelistList" class="domain-list"></ul>
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#10b981" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg> Exclusive-Track Domains</div>
+                    <p class="card-desc">When whitelist mode is on, <strong>only</strong> these domains are tracked —
+                        everything else is silently ignored.</p>
+
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Enable Whitelist Mode</div>
+                            <div class="toggle-desc">Only track the domains listed below</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="whitelistEnabled">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+
+                    <div class="input-row" style="margin-top:12px;">
+                        <input type="text" id="whitelistInput" placeholder="github.com, stackoverflow.com">
+                        <button id="addWhitelist" class="btn btn-primary">+ Add</button>
+                    </div>
+                    <ul id="whitelistList" class="domain-list"></ul>
+                    <div id="whitelistEmpty" class="domain-list-empty" style="display:none">No domains added</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg> Privacy Options</div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Skip Incognito / Private Windows</div>
+                            <div class="toggle-desc">Always on — private browsing is never tracked</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="skipIncognito" checked disabled>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Auto-detect Sensitive Pages</div>
+                            <div class="toggle-desc">Skips password managers, banking, and healthcare sites</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="skipSensitive" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Skip localhost &amp; Dev URLs</div>
+                            <div class="toggle-desc">Don't track localhost:* and 127.0.0.1 addresses</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="skipLocalhost">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
-            <div class="setting-group">
-                <h3>Privacy Options</h3>
+            <!-- ── Tracking ──────────────────────────────────── -->
+            <div id="panel-tracking" class="panel">
+                <div class="content-header">
+                    <h1 class="content-title">Tracking Preferences</h1>
+                    <p class="content-subtitle">Choose what types of activity MiniMe monitors and how long to keep local
+                        data</p>
+                </div>
 
-                <label class="toggle">
-                    <input type="checkbox" id="skipIncognito" checked disabled>
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Skip Incognito/Private Browsing (Always On)</span>
-                </label>
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                        </svg> What to Track</div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Web Page Visits &amp; Dwell Time</div>
+                            <div class="toggle-desc">Core tracking — captures URL, domain, and time spent per page</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="trackWebVisits" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">YouTube &amp; Video Content</div>
+                            <div class="toggle-desc">Captures video title and watch duration on YouTube</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="trackYouTube" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Media Playback Detection</div>
+                            <div class="toggle-desc">Detects audio/video playback on any website</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="trackMedia" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Page Content &amp; Text Extraction</div>
+                            <div class="toggle-desc">Extracts article text for AI summarisation and RAG indexing</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="trackPageContent" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Code Snippet Detection</div>
+                            <div class="toggle-desc">Captures code blocks from GitHub, StackOverflow, and docs sites
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="trackCodeBlocks" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
 
-                <label class="toggle">
-                    <input type="checkbox" id="skipSensitive" checked>
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Auto-detect Sensitive Pages (passwords, banking)</span>
-                </label>
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg> Minimum Visit Duration</div>
+                    <p class="card-desc">Skip page visits shorter than this threshold — removes accidental or bounce
+                        visits from your history.</p>
+                    <span class="field-label">Minimum duration</span>
+                    <select id="minDurationSeconds">
+                        <option value="0">No minimum</option>
+                        <option value="3">3 seconds</option>
+                        <option value="5" selected>5 seconds (recommended)</option>
+                        <option value="10">10 seconds</option>
+                        <option value="30">30 seconds</option>
+                    </select>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <ellipse cx="12" cy="5" rx="9" ry="3" />
+                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                        </svg> Local Data Retention</div>
+                    <p class="card-desc">How long to keep raw activity data locally before auto-deletion. Synced data on
+                        the server is not affected.</p>
+                    <span class="field-label">Keep data for</span>
+                    <select id="retentionDays">
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days (recommended)</option>
+                        <option value="90">90 days</option>
+                        <option value="365">1 year</option>
+                    </select>
+                    <div class="btn-row">
+                        <button id="clearOldData" class="btn btn-danger">🗑️ Clear Old Data Now</button>
+                    </div>
+                </div>
             </div>
-        </section>
 
-        <!-- Tracking Tab -->
-        <section id="tracking-tab" class="tab-content hidden">
-            <h2>Tracking Preferences</h2>
+            <!-- ── Sync & API ────────────────────────────────── -->
+            <div id="panel-sync" class="panel">
+                <div class="content-header">
+                    <h1 class="content-title">Sync &amp; API</h1>
+                    <p class="content-subtitle">Configure how the extension connects to your MiniMe backend</p>
+                </div>
 
-            <div class="setting-group">
-                <h3>Tracking Features</h3>
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="2" y1="12" x2="22" y2="12" />
+                            <path
+                                d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                        </svg> Connection URLs</div>
+                    <p class="card-desc">Point the extension at your MiniMe backend and dashboard. Change these if
+                        you're self-hosting or using cloud deployment.</p>
 
-                <label class="toggle">
-                    <input type="checkbox" id="trackYouTube" checked>
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Track YouTube Videos</span>
-                </label>
+                    <span class="field-label">Backend API URL</span>
+                    <div class="input-row">
+                        <input type="url" id="apiUrl" value="http://localhost:8000"
+                            placeholder="https://api.tryminime.com">
+                        <button id="saveApiUrl" class="btn btn-primary">Save</button>
+                    </div>
 
-                <label class="toggle">
-                    <input type="checkbox" id="trackMedia" checked>
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Detect Media Playback</span>
-                </label>
+                    <span class="field-label">Dashboard URL</span>
+                    <input type="url" id="dashboardUrl" value="http://localhost:3000/dashboard"
+                        placeholder="https://app.tryminime.com/dashboard" style="margin-bottom:16px;">
 
-                <label class="toggle">
-                    <input type="checkbox" id="minDuration">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Only track visits longer than 5 seconds</span>
-                </label>
+                    <div class="info-row">
+                        <span class="lbl">API status</span>
+                        <span id="apiStatus" class="status-badge">Checking…</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="lbl">Last synced</span>
+                        <span class="val" id="lastSyncTime">Never</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="lbl">Pending events</span>
+                        <span class="val" id="pendingCount">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <polyline points="1 4 1 10 7 10" />
+                            <polyline points="23 20 23 14 17 14" />
+                            <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" />
+                        </svg> Auto-Sync Frequency</div>
+                    <p class="card-desc">How often the extension automatically pushes captured activities to the
+                        backend.</p>
+                    <span class="field-label">Sync interval</span>
+                    <select id="syncInterval">
+                        <option value="1">Every 1 minute</option>
+                        <option value="5" selected>Every 5 minutes (recommended)</option>
+                        <option value="15">Every 15 minutes</option>
+                        <option value="30">Every 30 minutes</option>
+                        <option value="60">Every hour</option>
+                    </select>
+                    <div class="btn-row">
+                        <button id="syncNowBtn" class="btn btn-primary">⚡ Sync Now</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <polyline points="21 8 21 21 3 21 3 8" />
+                            <rect x="1" y="3" width="22" height="5" />
+                            <line x1="10" y1="12" x2="14" y2="12" />
+                        </svg> Data Management</div>
+                    <p class="card-desc">Export a full JSON backup of your local activity data, or wipe all cached data
+                        from this device.</p>
+                    <div class="btn-row">
+                        <button id="exportData" class="btn btn-secondary">📥 Export JSON</button>
+                        <button id="clearAllData" class="btn btn-danger">🗑️ Clear All Data</button>
+                    </div>
+                </div>
             </div>
 
-            <div class="setting-group">
-                <h3>Data Retention</h3>
+            <!-- ── AI & RAG ──────────────────────────────────── -->
+            <div id="panel-ai" class="panel">
+                <div class="content-header">
+                    <h1 class="content-title">AI &amp; RAG Settings</h1>
+                    <p class="content-subtitle">Configure what MiniMe understands about your browsing for AI-powered
+                        answers</p>
+                </div>
 
-                <label for="retentionDays">Keep local data for:</label>
-                <select id="retentionDays">
-                    <option value="7">7 days</option>
-                    <option value="30" selected>30 days</option>
-                    <option value="90">90 days</option>
-                    <option value="365">1 year</option>
-                </select>
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                            <circle cx="12" cy="12" r="10" />
+                        </svg> Knowledge Extraction</div>
+                    <p class="card-desc">These settings control what gets indexed into your personal knowledge graph for
+                        AI-powered chat and insights.</p>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Entity Extraction</div>
+                            <div class="toggle-desc">Auto-tag people, technologies, projects, and concepts from visited
+                                pages</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="aiExtractEntities" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Embed Page Content (RAG)</div>
+                            <div class="toggle-desc">Vectorise and index page summaries so MiniMe AI can answer
+                                questions from your browsing history</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="aiEmbedContent" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Auto-Summarise Articles</div>
+                            <div class="toggle-desc">Generate a 2–3 sentence summary of articles longer than 500 words
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="aiSummarise" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Build Knowledge Graph</div>
+                            <div class="toggle-desc">Connect pages, entities, and projects into MiniMe's personal
+                                knowledge graph</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="aiKnowledgeGraph" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
 
-                <button id="clearOldData" class="btn-danger">Clear Old Data Now</button>
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg> Context Depth</div>
+                    <p class="card-desc">How much content the extension sends to the backend for AI processing per page
+                        visit.</p>
+                    <span class="field-label">Extraction depth</span>
+                    <select id="contextDepth">
+                        <option value="minimal">Minimal — Title &amp; URL only</option>
+                        <option value="standard" selected>Standard — Title, URL, and first 1 000 chars</option>
+                        <option value="full">Full — Complete page text (most accurate)</option>
+                    </select>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><svg width="14" height="14" fill="none" stroke="#4f46e5" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0110 0v4" />
+                        </svg> AI Privacy</div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Skip Personal &amp; Social Content</div>
+                            <div class="toggle-desc">Don't embed content from social media feeds, personal email, or
+                                chat apps</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="aiSkipPersonal" checked>
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-label">Local AI Only (Ollama)</div>
+                            <div class="toggle-desc">Process all AI tasks on-device — nothing is sent to external
+                                servers</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="aiLocalOnly">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
-        </section>
 
-        <!-- Sync Tab -->
-        <section id="sync-tab" class="tab-content hidden">
-            <h2>Sync Settings</h2>
+            <!-- ── About ─────────────────────────────────────── -->
+            <div id="panel-about" class="panel">
+                <div class="content-header">
+                    <h1 class="content-title">About MiniMe</h1>
+                    <p class="content-subtitle">Extension information and links</p>
+                </div>
 
-            <div class="setting-group">
-                <h3>Sync Frequency</h3>
+                <div class="about-hero">
+                    <div class="about-logo">
+                        <img src="../assets/MiniMe-onlyLogo.png" alt="MiniMe"
+                            style="width:36px;height:36px;object-fit:contain;filter:brightness(0) invert(1);">
+                    </div>
+                    <div>
+                        <div class="about-name">MiniMe Activity Tracker</div>
+                        <div class="about-tagline">Privacy-first AI that understands how you live and work</div>
+                        <div class="about-version" id="extVersion">v1.1.0 · Chrome MV3</div>
+                    </div>
+                </div>
 
-                <label for="syncInterval">Auto-sync every:</label>
-                <select id="syncInterval">
-                    <option value="1">1 minute</option>
-                    <option value="5" selected>5 minutes</option>
-                    <option value="15">15 minutes</option>
-                    <option value="30">30 minutes</option>
-                    <option value="60">1 hour</option>
-                </select>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon"><svg width="22" height="22" fill="none" stroke="#4f46e5"
+                                stroke-width="1.7" viewBox="0 0 24 24">
+                                <path d="M18 20V10M12 20V4M6 20v-6" />
+                            </svg></div>
+                        <div class="feature-title">Activity Tracking</div>
+                        <div class="feature-desc">Web visits, dwell time, and app focus with millisecond precision</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><svg width="22" height="22" fill="none" stroke="#4f46e5"
+                                stroke-width="1.7" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="3" />
+                                <path
+                                    d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14M15.54 8.46a5 5 0 010 7.07M8.46 8.46a5 5 0 000 7.07" />
+                            </svg></div>
+                        <div class="feature-title">RAG Knowledge Base</div>
+                        <div class="feature-desc">Vectorises your browsing into a searchable personal knowledge graph
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><svg width="22" height="22" fill="none" stroke="#4f46e5"
+                                stroke-width="1.7" viewBox="0 0 24 24">
+                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                                <line x1="7" y1="7" x2="7.01" y2="7" />
+                            </svg></div>
+                        <div class="feature-title">Entity Extraction</div>
+                        <div class="feature-desc">Auto-tags people, technologies, and concepts from visited pages</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><svg width="22" height="22" fill="none" stroke="#4f46e5"
+                                stroke-width="1.7" viewBox="0 0 24 24">
+                                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                            </svg></div>
+                        <div class="feature-title">AI Chat (RAG)</div>
+                        <div class="feature-desc">Ask questions — AI answers from your own browsing history</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><svg width="22" height="22" fill="none" stroke="#4f46e5"
+                                stroke-width="1.7" viewBox="0 0 24 24">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            </svg></div>
+                        <div class="feature-title">Privacy-First</div>
+                        <div class="feature-desc">Local storage, blacklist/whitelist controls, incognito-free by default
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><svg width="22" height="22" fill="none" stroke="#4f46e5"
+                                stroke-width="1.7" viewBox="0 0 24 24">
+                                <polyline points="1 4 1 10 7 10" />
+                                <polyline points="23 20 23 14 17 14" />
+                                <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" />
+                            </svg></div>
+                        <div class="feature-title">Background Sync</div>
+                        <div class="feature-desc">Queues and batches events — reliable delivery even when offline</div>
+                    </div>
+                </div>
+
+                <div class="links-row">
+                    <a href="https://tryminime.com" target="_blank">🌐 Website</a>
+                    <a href="http://localhost:3000/dashboard" id="dashboardLink" target="_blank">📊 Dashboard</a>
+                    <a href="https://github.com/tryminime/minime" target="_blank">💻 GitHub</a>
+                    <a href="mailto:support@tryminime.com">✉️ Support</a>
+                </div>
+
+                <div class="card">
+                    <h2>Connection Info</h2>
+                    <div class="info-row">
+                        <span class="lbl">Backend API</span>
+                        <span class="val" id="aboutApiUrl">http://localhost:8000</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="lbl">Dashboard</span>
+                        <span class="val" id="aboutDashUrl">http://localhost:3000/dashboard</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="lbl">Manifest Version</span>
+                        <span class="val">MV3 (Chrome) / MV2 (Firefox)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="lbl">Homepage</span>
+                        <span class="val">tryminime.com</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="setting-group">
-                <h3>API Configuration</h3>
+        </main>
+    </div>
 
-                <label for="apiUrl">API URL:</label>
-                <input type="url" id="apiUrl" value="http://localhost:8000">
-
-                <button id="saveApiUrl" class="btn-primary">Save</button>
-            </div>
-
-            <div class="setting-group">
-                <h3>Data Management</h3>
-
-                <button id="exportData" class="btn-secondary">📥 Export All Data (JSON)</button>
-                <button id="clearAllData" class="btn-danger">🗑️ Clear All Local Data</button>
-            </div>
-        </section>
-
-        <!-- About Tab -->
-        <section id="about-tab" class="tab-content hidden">
-            <h2>About MiniMe</h2>
-
-            <div class="about-info">
-                <p><strong>Version:</strong> 1.0.0</p>
-                <p><strong>Privacy-First Activity Tracking</strong></p>
-                <p>Track your digital activity while maintaining complete control over your data.</p>
-
-                <h3>Features</h3>
-                <ul>
-                    <li>✅ Tab & URL tracking with time calculation</li>
-                    <li>✅ Privacy controls (blacklist/whitelist)</li>
-                    <li>✅ Encrypted local storage</li>
-                    <li>✅ Background sync to backend</li>
-                    <li>✅ YouTube & media detection</li>
-                    <li>✅ Context menu integration</li>
-                </ul>
-
-                <h3>Data Privacy</h3>
-                <ul>
-                    <li>🔒 All data encrypted locally</li>
-                    <li>🚫 No tracking in incognito mode</li>
-                    <li>👁️ Sensitive page detection</li>
-                    <li>🎯 Full user control</li>
-                </ul>
-            </div>
-        </section>
-
-        <footer>
-            <div id="statusMessage" class="status-message hidden"></div>
-            <button id="resetDefaults" class="link-btn">Reset to Defaults</button>
-        </footer>
+    <!-- ── Footer ── -->
+    <div class="footer-bar">
+        <span id="statusMessage" class="status-msg"></span>
+        <button id="resetDefaults" class="reset-btn">Reset to Defaults</button>
     </div>
 
     <script src="settings.js"></script>

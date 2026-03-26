@@ -71,12 +71,20 @@ function getTypeLabel(type: string): string {
 // 30-day activity heatmap — one cell per day, coloured by tracked hours
 function ActivityHeatmap({ dailyData }: { dailyData: DailyMetric[] }) {
     const today = new Date();
+
+    // Deduplicate dailyData by date (API may return multiple entries per day)
+    // Keep the last entry per date if duplicates exist
+    const dateMap = new Map<string, DailyMetric>();
+    for (const m of dailyData) {
+        dateMap.set(m.date, m);
+    }
+
     const cells: { date: string; hours: number }[] = [];
     for (let i = 29; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(today.getDate() - i);
         const dateStr = d.toISOString().slice(0, 10);
-        const match = dailyData.find(m => m.date === dateStr);
+        const match = dateMap.get(dateStr);
         const hours = match ? (match.total_seconds || 0) / 3600 : 0;
         cells.push({ date: dateStr, hours });
     }
@@ -107,9 +115,9 @@ function ActivityHeatmap({ dailyData }: { dailyData: DailyMetric[] }) {
             <div className="space-y-1.5">
                 {rows.map((row, ri) => (
                     <div key={ri} className="flex gap-1.5">
-                        {row.map(cell => (
+                        {row.map((cell, ci) => (
                             <div
-                                key={cell.date}
+                                key={`${ri}-${ci}-${cell.date}`}
                                 title={`${cell.date}: ${cell.hours.toFixed(1)}h tracked`}
                                 className="flex-1 h-7 rounded cursor-default transition-opacity hover:opacity-80"
                                 style={{ background: intensity(cell.hours) }}
@@ -156,7 +164,8 @@ export default function DashboardOverviewPage() {
         setIsExporting(true);
         try {
             const result = await api.get<{ activities: object[]; total: number; format: string }>('/api/v1/analytics/export?format=json');
-            const payload = result.activities ?? result;
+            // Safely handle different response structures
+            const payload = result?.activities ?? result ?? [];
             const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -165,9 +174,10 @@ export default function DashboardOverviewPage() {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            toast.success(`Exported ${result.total ?? 0} activities`);
-        } catch {
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            toast.success(`Exported ${result?.total ?? (Array.isArray(payload) ? payload.length : 0)} activities`);
+        } catch (error) {
+            console.error('Export failed:', error);
             toast.error('Export failed — please try again');
         } finally {
             setIsExporting(false);
@@ -255,26 +265,35 @@ export default function DashboardOverviewPage() {
                     {/* Wellness + Goals KPI row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Wellness mini-card */}
-                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 flex items-center gap-5">
+                        <div className="bg-white relative hover:shadow-md transition-shadow rounded-lg p-6 shadow-sm border border-gray-200 flex items-center gap-5">
                             <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
                                 <Heart className="w-7 h-7 text-emerald-600" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm text-gray-500 mb-1">Wellness Score</p>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {wellnessData?.overall_score ?? '—'}<span className="text-base font-normal text-gray-400">/100</span>
-                                </p>
-                                <p className={`text-xs mt-0.5 font-medium ${wellnessData?.burnout_risk?.level === 'low' ? 'text-emerald-600' :
+                                <p className="text-sm text-gray-500 mb-2">7-Day Wellness Trend</p>
+                                <div className="flex items-end gap-1 h-8">
+                                    {(dailyData?.metrics?.slice(-7) ?? []).length > 0 ? (dailyData?.metrics?.slice(-7) ?? []).map((day, i) => (
+                                        <div 
+                                            key={i} 
+                                            className="w-full bg-emerald-400 rounded-t-sm transition-all" 
+                                            style={{ height: `${Math.max(4, (day.focus_score / 100) * 32)}px` }} 
+                                            title={`Score: ${day.focus_score.toFixed(0)}`}
+                                        />
+                                    )) : (
+                                        <span className="text-sm text-gray-400">No data</span>
+                                    )}
+                                </div>
+                                <p className={`text-xs mt-2 font-medium ${wellnessData?.burnout_risk?.level === 'low' ? 'text-emerald-600' :
                                     wellnessData?.burnout_risk?.level === 'medium' ? 'text-amber-600' : 'text-red-500'
                                     }`}>
                                     Burnout risk: {wellnessData?.burnout_risk?.level ?? 'unknown'}
                                 </p>
                             </div>
-                            <a href="/dashboard/wellness" className="text-xs text-indigo-600 hover:underline shrink-0">View →</a>
+                            <a href="/dashboard/wellness" className="text-xs font-medium px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg shrink-0 transition-colors after:absolute after:inset-0">View &rarr;</a>
                         </div>
 
                         {/* Goals mini-card */}
-                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 flex items-center gap-5">
+                        <div className="bg-white relative hover:shadow-md transition-shadow rounded-lg p-6 shadow-sm border border-gray-200 flex items-center gap-5">
                             <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
                                 <Target className="w-7 h-7 text-indigo-600" />
                             </div>
@@ -291,7 +310,7 @@ export default function DashboardOverviewPage() {
                                     <span className="text-xs text-gray-400">{goalCompletionPct}% done</span>
                                 </div>
                             </div>
-                            <a href="/dashboard/goals" className="text-xs text-indigo-600 hover:underline shrink-0">View →</a>
+                            <a href="/dashboard/goals" className="text-xs font-medium px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg shrink-0 transition-colors after:absolute after:inset-0">View &rarr;</a>
                         </div>
                     </div>
 
@@ -359,37 +378,56 @@ export default function DashboardOverviewPage() {
                         </div>
                     )}
 
-                    {/* Recent activity — REAL DATA */}
+                    {/* High-Level Highlights */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                        {data.recent_activities.length === 0 ? (
-                            <div className="text-center py-8 text-gray-400">
-                                <Activity className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                                <p>No activities yet. Start tracking to see your data here.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {data.recent_activities.map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-                                        <div className="flex items-center gap-3 flex-1">
-                                            {getActivityIcon(item.type)}
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-gray-900 truncate">{item.title}</p>
-                                                <p className="text-sm text-gray-500 flex items-center gap-2">
-                                                    <span>{getTypeLabel(item.type)}</span>
-                                                    {item.app && <span>· {item.app}</span>}
-                                                    {item.domain && <span>· {item.domain}</span>}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right ml-4 shrink-0">
-                                            <span className="text-sm font-medium text-blue-600">{item.duration}</span>
-                                            <p className="text-xs text-gray-400">{item.time_ago}</p>
-                                        </div>
+                        <h3 className="text-lg font-semibold mb-4">High-Level Highlights</h3>
+                        <div className="space-y-4">
+                            {data.top_apps.length > 0 && (
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                                        <Monitor className="w-5 h-5" />
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                    <div>
+                                        <p className="font-medium text-gray-900">Most Productive App</p>
+                                        <p className="text-sm text-gray-500">
+                                            {data.top_apps[0].app} ({data.top_apps[0].duration} today)
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            {data.deep_work_hours > 0 && (
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
+                                        <Zap className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-gray-900">Deep Work Achieved</p>
+                                        <p className="text-sm text-gray-500">
+                                            You logged {data.deep_work_hours.toFixed(1)}h of deep work today.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            {Object.keys(data.activity_types).length > 0 && (
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                                        <Target className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-gray-900">Top Activity Category</p>
+                                        <p className="text-sm text-gray-500 capitalize">
+                                            {Object.entries(data.activity_types).sort((a,b) => b[1]-a[1])[0][0]} ({Object.entries(data.activity_types).sort((a,b) => b[1]-a[1])[0][1]} instances)
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            {data.top_apps.length === 0 && data.deep_work_hours === 0 && Object.keys(data.activity_types).length === 0 && (
+                                <div className="text-center py-4 text-gray-400">
+                                    <Activity className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                                    <p className="text-sm">Not enough data for highlights yet. Start tracking!</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </>
             ) : null}
@@ -400,10 +438,10 @@ export default function DashboardOverviewPage() {
                     <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <span className="text-lg">🧠</span> AI Insights
                     </h3>
-                    <ProactiveInsightsPanel />
+                    <ProactiveInsightsPanel overviewFocusScore={data?.focus_score} overviewDeepWorkHours={data?.deep_work_hours} />
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                    <RecommendationsPanel />
+                    <RecommendationsPanel overview={data ?? null} />
                 </div>
             </div>
 

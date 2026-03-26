@@ -135,6 +135,7 @@ impl Database {
                 "Idle" => ActivityType::Idle,
                 "Break" => ActivityType::Break,
                 "FocusPeriod" => ActivityType::FocusPeriod,
+                "ReadingAnalytics" => ActivityType::ReadingAnalytics,
                 _ => ActivityType::WindowFocus,
             };
             
@@ -150,6 +151,7 @@ impl Database {
                 duration_seconds: row.get(6)?,
                 is_idle: row.get(7)?,
                 device_id: row.get(8)?,
+                input_metrics: None,
             })
         })?;
         

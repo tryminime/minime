@@ -1,6 +1,6 @@
 'use client';
 
-import { User, Building2, Wrench, Brain, MapPin, Tag, Cpu, Activity, TrendingUp } from 'lucide-react';
+import { User, Building2, Wrench, Brain, MapPin, Tag, Cpu, Activity, TrendingUp, FolderGit2 } from 'lucide-react';
 import { useEnrichmentStats } from '@/lib/hooks/useEntities';
 
 const TYPE_CONFIG = [
@@ -9,6 +9,7 @@ const TYPE_CONFIG = [
     { type: 'artifact', label: 'Artifacts', icon: Wrench, color: 'text-green-600', bg: 'bg-green-50' },
     { type: 'skill', label: 'Skills', icon: Brain, color: 'text-orange-600', bg: 'bg-orange-50' },
     { type: 'concept', label: 'Concepts', icon: MapPin, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { type: 'project', label: 'Projects', icon: FolderGit2, color: 'text-rose-600', bg: 'bg-rose-50' },
 ] as const;
 
 export function EnrichmentStats() {
@@ -64,7 +65,7 @@ export function EnrichmentStats() {
             {/* By-type breakdown */}
             <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Entities by Type</h3>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     {TYPE_CONFIG.map(({ type, label, icon: Icon, color, bg }) => {
                         const count = (byType[type as keyof typeof byType] ?? 0) as number;
                         const pct = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -75,7 +76,7 @@ export function EnrichmentStats() {
                                     <span className="text-xs font-medium">{label}</span>
                                 </div>
                                 <p className="text-2xl font-bold text-gray-900">{count}</p>
-                                {total > 0 && (
+                                {total > 0 && count > 0 && (
                                     <div className="mt-2">
                                         <div className="h-1.5 bg-white/60 rounded-full overflow-hidden">
                                             <div

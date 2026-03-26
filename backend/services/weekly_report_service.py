@@ -25,13 +25,13 @@ from anthropic import Anthropic, APIError, APITimeoutError
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.analytics_models import WeeklyReport, DailyMetrics, DailySummary
-from backend.services.productivity_metrics_service import ProductivityMetricsService
-from backend.services.collaboration_analytics_service import CollaborationAnalyticsService
-from backend.services.skill_analytics_service import SkillAnalyticsService
-from backend.services.validation import validate_uuid, validate_week_start
-from backend.database.redis_client import get_redis_client
-from backend.config.settings import settings
+from models.analytics_models import WeeklyReport, DailyMetrics, DailySummary
+from services.productivity_metrics_service import ProductivityMetricsService
+from services.collaboration_analytics_service import CollaborationAnalyticsService
+from services.skill_analytics_service import SkillAnalyticsService
+from services.validation import validate_uuid, validate_week_start
+from database.redis_client import get_redis_client
+from config.settings import settings
 
 logger = structlog.get_logger(__name__)
 

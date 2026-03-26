@@ -29,7 +29,8 @@ export function useScreenshots(limit: number = 20, offset: number = 0) {
             api.get<ScreenshotListResponse>(
                 `/api/v1/screenshots?limit=${limit}&offset=${offset}`
             ),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 60 * 1000,
+        refetchInterval: 60 * 1000,
         retry: 2,
     });
 }

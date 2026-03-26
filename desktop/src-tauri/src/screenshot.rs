@@ -6,9 +6,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 #[cfg(not(target_os = "macos"))]
-use std::io::Cursor;
-#[cfg(not(target_os = "macos"))]
 use xcap::Monitor;
+
 
 use crate::encryption::EncryptionManager;
 
@@ -21,8 +20,12 @@ pub struct ScreenshotMeta {
     pub height: u32,
     pub monitor_name: String,
     pub file_size_bytes: usize,
-    /// Optional user-provided label
+    /// Optional user-provided label (or auto-generated from window context)
     pub label: Option<String>,
+    /// App that was active when the screenshot was taken
+    pub app_name: Option<String>,
+    /// Window title at the time of capture
+    pub window_title: Option<String>,
 }
 
 /// Result of a screenshot capture
@@ -52,6 +55,8 @@ impl ScreenshotManager {
                     height INTEGER NOT NULL,
                     monitor_name TEXT NOT NULL,
                     label TEXT,
+                    app_name TEXT,
+                    window_title TEXT,
                     encrypted_data BLOB NOT NULL,
                     file_size_bytes INTEGER NOT NULL,
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -59,26 +64,40 @@ impl ScreenshotManager {
                 CREATE INDEX IF NOT EXISTS idx_screenshots_timestamp ON screenshots(timestamp);",
             )
             .ok();
+
+            // Add columns if they don't exist (migration for existing databases)
+            conn.execute("ALTER TABLE screenshots ADD COLUMN app_name TEXT", []).ok();
+            conn.execute("ALTER TABLE screenshots ADD COLUMN window_title TEXT", []).ok();
         }
 
         Self { db_path }
     }
 
-    /// Capture the full primary monitor screen
+    /// Capture the full primary monitor screen.
+    /// `label` is an optional user-provided label.
+    /// `window_context` is an optional (app_name, window_title) from the active window.
     #[cfg(not(target_os = "macos"))]
-    pub fn capture(&self, label: Option<String>) -> Result<CaptureResult, String> {
+    pub fn capture(
+        &self,
+        label: Option<String>,
+        window_context: Option<(String, String)>,
+    ) -> Result<CaptureResult, String> {
         let monitors = Monitor::all().map_err(|e| format!("Failed to enumerate monitors: {}", e))?;
 
         let monitor = monitors
             .first()
             .ok_or_else(|| "No monitors found".to_string())?;
 
-        self.capture_monitor(monitor, label)
+        self.capture_monitor(monitor, label, window_context)
     }
 
     /// macOS stub — xcap not supported on macOS in this version
     #[cfg(target_os = "macos")]
-    pub fn capture(&self, _label: Option<String>) -> Result<CaptureResult, String> {
+    pub fn capture(
+        &self,
+        _label: Option<String>,
+        _window_context: Option<(String, String)>,
+    ) -> Result<CaptureResult, String> {
         Err("Screenshot capture is not supported on macOS in this release".to_string())
     }
 
@@ -88,6 +107,7 @@ impl ScreenshotManager {
         &self,
         index: usize,
         label: Option<String>,
+        window_context: Option<(String, String)>,
     ) -> Result<CaptureResult, String> {
         let monitors = Monitor::all().map_err(|e| format!("Failed to enumerate monitors: {}", e))?;
 
@@ -95,12 +115,17 @@ impl ScreenshotManager {
             .get(index)
             .ok_or_else(|| format!("Monitor index {} not found, {} available", index, monitors.len()))?;
 
-        self.capture_monitor(monitor, label)
+        self.capture_monitor(monitor, label, window_context)
     }
 
     /// macOS stub
     #[cfg(target_os = "macos")]
-    pub fn capture_monitor_by_index(&self, _index: usize, _label: Option<String>) -> Result<CaptureResult, String> {
+    pub fn capture_monitor_by_index(
+        &self,
+        _index: usize,
+        _label: Option<String>,
+        _window_context: Option<(String, String)>,
+    ) -> Result<CaptureResult, String> {
         Err("Screenshot capture is not supported on macOS in this release".to_string())
     }
 
@@ -110,6 +135,7 @@ impl ScreenshotManager {
         &self,
         monitor: &Monitor,
         label: Option<String>,
+        window_context: Option<(String, String)>,
     ) -> Result<CaptureResult, String> {
         // Capture the screen
         let image = monitor
@@ -121,7 +147,6 @@ impl ScreenshotManager {
         let monitor_name = monitor.name().to_string();
 
         // Encode as PNG into memory buffer using the raw RGBA pixel data
-        // (avoids image crate version conflict between xcap's 0.24 and our 0.25)
         let mut png_buffer = Vec::new();
         {
             use image::ImageEncoder;
@@ -145,6 +170,23 @@ impl ScreenshotManager {
         let id = uuid::Uuid::new_v4().to_string();
         let timestamp = Utc::now();
 
+        // Extract window context for auto-labeling
+        let (app_name, window_title) = match &window_context {
+            Some((app, title)) => (Some(app.clone()), Some(title.clone())),
+            None => (None, None),
+        };
+
+        // Auto-generate label from window context if not provided
+        let effective_label = label.or_else(|| {
+            window_context.as_ref().map(|(app, title)| {
+                if title.is_empty() {
+                    format!("Screenshot — {}", app)
+                } else {
+                    format!("{} — {}", app, title)
+                }
+            })
+        });
+
         let meta = ScreenshotMeta {
             id: id.clone(),
             timestamp,
@@ -152,7 +194,9 @@ impl ScreenshotManager {
             height,
             monitor_name: monitor_name.clone(),
             file_size_bytes,
-            label: label.clone(),
+            label: effective_label.clone(),
+            app_name: app_name.clone(),
+            window_title: window_title.clone(),
         };
 
         // Store in SQLite
@@ -160,15 +204,17 @@ impl ScreenshotManager {
             .map_err(|e| format!("DB open failed: {}", e))?;
 
         conn.execute(
-            "INSERT INTO screenshots (id, timestamp, width, height, monitor_name, label, encrypted_data, file_size_bytes)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO screenshots (id, timestamp, width, height, monitor_name, label, app_name, window_title, encrypted_data, file_size_bytes)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             rusqlite::params![
                 id,
                 timestamp.to_rfc3339(),
                 width,
                 height,
                 monitor_name,
-                label,
+                effective_label,
+                app_name,
+                window_title,
                 encrypted_data,
                 file_size_bytes as i64,
             ],
@@ -176,11 +222,12 @@ impl ScreenshotManager {
         .map_err(|e| format!("DB insert failed: {}", e))?;
 
         log::info!(
-            "Screenshot captured: {}x{} from '{}' ({} bytes, encrypted)",
+            "Screenshot captured: {}x{} from '{}' ({} bytes, encrypted) label: {:?}",
             width,
             height,
             monitor_name,
-            file_size_bytes
+            file_size_bytes,
+            meta.label
         );
 
         Ok(CaptureResult {
@@ -201,7 +248,7 @@ impl ScreenshotManager {
 
         let mut stmt = conn
             .prepare(
-                "SELECT id, timestamp, width, height, monitor_name, label, file_size_bytes
+                "SELECT id, timestamp, width, height, monitor_name, label, app_name, window_title, file_size_bytes
                  FROM screenshots
                  ORDER BY timestamp DESC
                  LIMIT ?1 OFFSET ?2",
@@ -220,7 +267,9 @@ impl ScreenshotManager {
                     height: row.get(3)?,
                     monitor_name: row.get(4)?,
                     label: row.get(5)?,
-                    file_size_bytes: row.get::<_, i64>(6)? as usize,
+                    app_name: row.get(6)?,
+                    window_title: row.get(7)?,
+                    file_size_bytes: row.get::<_, i64>(8)? as usize,
                 })
             })
             .map_err(|e| format!("Query failed: {}", e))?;

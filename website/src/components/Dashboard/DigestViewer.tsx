@@ -94,20 +94,8 @@ export function DigestViewer({ date }: DigestViewerProps) {
                 </div>
             </div>
 
-            {/* HTML Content */}
-            <div
-                id="digest-content"
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 prose prose-sm max-w-none
-          prose-headings:text-gray-900 
-          prose-p:text-gray-700
-          prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-          prose-strong:text-gray-900
-          prose-ul:text-gray-700
-          prose-ol:text-gray-700
-          prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200
-          prose-code:text-blue-600 prose-code:bg-gray-50 prose-code:px-1 prose-code:rounded"
-                dangerouslySetInnerHTML={{ __html: data.html_content }}
-            />
+            {/* Structured Digest Content */}
+            <DigestSections html={data.html_content} />
 
             {/* Key Achievements */}
             {data.summary_stats.key_achievements.length > 0 && (
@@ -147,6 +135,91 @@ export function DigestViewer({ date }: DigestViewerProps) {
             )}
             {/* AI Insights Card */}
             <AIInsightsSection />
+        </div>
+    );
+}
+
+/** Parse the backend HTML digest into structured visual sections */
+function DigestSections({ html }: { html: string }) {
+    // Parse sections from the HTML
+    const parser = typeof DOMParser !== 'undefined' ? new DOMParser() : null;
+    if (!parser) return <div dangerouslySetInnerHTML={{ __html: html }} />;
+
+    const doc = parser.parseFromString(html, 'text/html');
+    const elements = Array.from(doc.body.children);
+
+    const sections: { title: string; emoji: string; items: string[]; summary?: string }[] = [];
+    let currentSection: { title: string; emoji: string; items: string[]; summary?: string } | null = null;
+    let overview: string | null = null;
+
+    for (const el of elements) {
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'h2') {
+            // Week overview header — skip, we already show it above
+            continue;
+        } else if (tag === 'p' && !currentSection) {
+            overview = el.textContent || '';
+        } else if (tag === 'h3') {
+            const text = el.textContent || '';
+            const emoji = text.match(/^[^\w\s]/u)?.[0] || '📌';
+            const title = text.replace(/^[^\w\s]\s*/u, '');
+            currentSection = { title, emoji, items: [] };
+            sections.push(currentSection);
+        } else if (tag === 'ul' && currentSection) {
+            const lis = Array.from(el.querySelectorAll('li'));
+            currentSection.items = lis.map(li => li.textContent || '');
+        } else if (tag === 'p' && currentSection) {
+            currentSection.summary = el.textContent || '';
+        }
+    }
+
+    const sectionColors: Record<string, { bg: string; border: string; icon: string; badge: string }> = {
+        'Top Activities': { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'text-amber-600', badge: 'bg-amber-100 text-amber-700' },
+        'Performance': { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
+        'Achievements': { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700' },
+        'Suggestions': { bg: 'bg-purple-50', border: 'border-purple-200', icon: 'text-purple-600', badge: 'bg-purple-100 text-purple-700' },
+    };
+
+    const defaultColor = { bg: 'bg-gray-50', border: 'border-gray-200', icon: 'text-gray-600', badge: 'bg-gray-100 text-gray-700' };
+
+    return (
+        <div className="space-y-4">
+            {/* Overview Card */}
+            {overview && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+                    <p className="text-gray-700 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: overview.replace(/(\d+)/g, '<strong>$1</strong>') }} />
+                </div>
+            )}
+
+            {/* Section Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sections.map((section, idx) => {
+                    const colors = sectionColors[section.title] || defaultColor;
+                    return (
+                        <div key={idx} className={`${colors.bg} rounded-lg border ${colors.border} p-5`}>
+                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <span className="text-lg">{section.emoji}</span>
+                                {section.title}
+                            </h3>
+                            {section.summary && (
+                                <p className="text-sm text-gray-700 mb-2">{section.summary}</p>
+                            )}
+                            {section.items.length > 0 && (
+                                <ul className="space-y-1.5">
+                                    {section.items.map((item, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                                            <span className={`${colors.badge} w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5`}>
+                                                {section.title === 'Top Activities' ? i + 1 : section.title === 'Achievements' ? '✓' : '→'}
+                                            </span>
+                                            <span>{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }

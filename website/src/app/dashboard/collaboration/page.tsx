@@ -4,9 +4,36 @@ import { CollaborationMetrics } from '@/components/Dashboard/CollaborationMetric
 import { TopCollaborators } from '@/components/Dashboard/TopCollaborators';
 import { CollaborationNetworkChart } from '@/components/Dashboard/CollaborationNetworkChart';
 import { useWebSocket } from '@/lib/hooks/useWebSocket';
+import { useCollaborationWeekly } from '@/lib/hooks/useCollaborationMetrics';
 
 export default function CollaborationPage() {
     const { isConnected, lastUpdate } = useWebSocket();
+    const { data } = useCollaborationWeekly();
+
+    // Dynamic insights based on actual data
+    const insights: string[] = [];
+    if (data) {
+        const collabCount = data.total_collaborators || data.top_collaborators.length;
+        if (collabCount > 0) {
+            insights.push(`You've interacted with ${collabCount} unique collaborators this week`);
+        }
+        if (data.meeting_count > 0) {
+            insights.push(`${data.meeting_count} meetings tracked — consider protecting focus blocks`);
+        }
+        if (data.communication_frequency === 'High') {
+            insights.push('Communication volume is high — great for teamwork, but watch for context-switch fatigue');
+        } else if (data.communication_frequency === 'Low') {
+            insights.push('Communication volume is low — consider reaching out to teammates');
+        }
+        if (collabCount > 5) {
+            insights.push('Strong network diversity — you are collaborating across multiple people');
+        }
+    }
+    if (insights.length === 0) {
+        insights.push('Diversify your collaborations to expand your network');
+        insights.push('Regular 1:1 meetings strengthen professional relationships');
+        insights.push('Cross-functional collaboration boosts innovation');
+    }
 
     return (
         <div className="space-y-6">
@@ -40,16 +67,16 @@ export default function CollaborationPage() {
                 <CollaborationNetworkChart />
             </div>
 
-            {/* Insights */}
+            {/* Dynamic Insights */}
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <h3 className="font-semibold text-purple-900 mb-2">🤝 Collaboration Insights</h3>
                 <ul className="text-sm text-purple-800 space-y-1">
-                    <li>• Diversify your collaborations to expand your network</li>
-                    <li>• Regular 1:1 meetings strengthen professional relationships</li>
-                    <li>• Cross-functional collaboration boosts innovation</li>
-                    <li>• Follow up with inactive collaborators to maintain connections</li>
+                    {insights.map((insight, i) => (
+                        <li key={i}>• {insight}</li>
+                    ))}
                 </ul>
             </div>
         </div>
     );
 }
+

@@ -8,8 +8,8 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from fastapi.testclient import TestClient
 
-from backend.main import app
-from backend.database.postgres import Base
+from main import app
+from database.postgres import Base
 
 
 # =====================================================

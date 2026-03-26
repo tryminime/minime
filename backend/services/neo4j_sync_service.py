@@ -13,8 +13,8 @@ from uuid import UUID
 from datetime import datetime
 import structlog
 
-from backend.database.postgres import SessionLocal
-from backend.models import Entity, ActivityEntityLink
+from database.postgres import SessionLocal
+from models import Entity, ActivityEntityLink
 
 logger = structlog.get_logger()
 
@@ -32,7 +32,7 @@ class Neo4jGraphSyncService:
         self.neo4j_client = None
         
         try:
-            from backend.database.neo4j_client import get_neo4j_client
+            from database.neo4j_client import get_neo4j_client
             self.neo4j_client = get_neo4j_client()
             self.neo4j_available = True
             logger.info("Neo4j graph sync service initialized")

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-    Activity, Clock, Brain, MessageSquare, Video, Camera, Watch,
+    Activity, Clock, Brain, MessageSquare, Video, Camera, Watch, BookOpen,
 } from 'lucide-react';
 import { ActivityTimeline } from '@/components/Dashboard/ActivityTimeline';
 import { FocusSessions } from '@/components/Dashboard/FocusSessions';
@@ -10,10 +10,12 @@ import { SocialMediaTracker } from '@/components/Dashboard/SocialMediaTracker';
 import { MeetingList } from '@/components/Dashboard/MeetingList';
 import { ScreenshotGallery } from '@/components/Dashboard/ScreenshotGallery';
 import { WearableStatus } from '@/components/Dashboard/WearableStatus';
+import { ReadingTracker } from '@/components/Dashboard/ReadingTracker';
 
 const TABS = [
     { id: 'timeline', label: 'Timeline', icon: Clock },
     { id: 'focus', label: 'Focus', icon: Brain },
+    { id: 'reading', label: 'Reading', icon: BookOpen },
     { id: 'social', label: 'Social', icon: MessageSquare },
     { id: 'meetings', label: 'Meetings', icon: Video },
     { id: 'screenshots', label: 'Screenshots', icon: Camera },
@@ -51,8 +53,8 @@ export default function ActivitiesPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${isActive
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -67,6 +69,7 @@ export default function ActivitiesPage() {
             <div className="min-h-[400px]">
                 {activeTab === 'timeline' && <ActivityTimeline />}
                 {activeTab === 'focus' && <FocusSessions />}
+                {activeTab === 'reading' && <ReadingTracker />}
                 {activeTab === 'social' && <SocialMediaTracker />}
                 {activeTab === 'meetings' && <MeetingList />}
                 {activeTab === 'screenshots' && <ScreenshotGallery />}

@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StatCardProps {
@@ -7,6 +8,7 @@ interface StatCardProps {
     change?: string;
     changeType?: 'positive' | 'negative' | 'neutral';
     icon?: ReactNode;
+    tooltip?: string;
     className?: string;
 }
 
@@ -16,6 +18,7 @@ export function StatCard({
     change,
     changeType = 'neutral',
     icon,
+    tooltip,
     className,
 }: StatCardProps) {
     const changeColors = {
@@ -27,7 +30,17 @@ export function StatCard({
     return (
         <div className={cn('bg-white rounded-lg p-6 shadow-sm border border-gray-200', className)}>
             <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-600">{title}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-gray-600">{title}</p>
+                    {tooltip && (
+                        <div className="group relative flex items-center">
+                            <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-900 text-white text-xs p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
+                                {tooltip}
+                            </div>
+                        </div>
+                    )}
+                </div>
                 {icon && <div className="text-gray-400">{icon}</div>}
             </div>
             <div className="mt-2">

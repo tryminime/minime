@@ -1,252 +1,459 @@
 """
-Entity Deduplication Service.
+Entity Deduplication Service — Full Graph-Clustering Implementation (Async).
 
-Implements multi-factor duplicate detection using:
-1. Embedding similarity (semantic matching)
-2. External ID matching (deterministic)
-3. Alias matching (fuzzy text matching)
+Signals used:
+  1. Embedding cosine similarity   (Qdrant, optional)
+  2. External ID exact match       (deterministic, highest confidence)
+  3. Levenshtein / SequenceMatcher (fuzzy name similarity)
+  4. Token-set ratio               (token overlap after sorting)
+  5. Alias cross-match             (intersection of alias sets)
+
+Clustering:
+  Union-Find (Disjoint Set Union) groups transitive duplicates so that if
+  A ~ B and B ~ C, all three end up in the same cluster even without a
+  direct A–C edge.
+
+All DB methods are async and accept an AsyncSession passed from FastAPI endpoints.
 """
 
-from backend.database.postgres import SessionLocal
-from backend.models import Entity
-from backend.services.qdrant_entity_service import qdrant_entity_service
-from typing import List, Dict, Optional
+from __future__ import annotations
+
+import re
+import difflib
+from collections import defaultdict
+from typing import List, Dict, Optional, Tuple
 from uuid import UUID
+
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from models import Entity, ActivityEntityLink
 
 logger = structlog.get_logger()
 
+# ---------------------------------------------------------------------------
+# Thresholds
+# ---------------------------------------------------------------------------
+AUTO_MERGE_THRESHOLD = 0.97
+SUGGEST_THRESHOLD    = 0.80
+MIN_PAIR_SCORE       = 0.75
+
+
+# ===========================================================================
+# Union-Find (Disjoint Set Union) for transitive clustering
+# ===========================================================================
+
+class UnionFind:
+    """Path-compressed, union-by-rank Disjoint Set Union."""
+
+    def __init__(self) -> None:
+        self._parent: Dict[str, str] = {}
+        self._rank:   Dict[str, int] = {}
+
+    def find(self, x: str) -> str:
+        if x not in self._parent:
+            self._parent[x] = x
+            self._rank[x]   = 0
+        if self._parent[x] != x:
+            self._parent[x] = self.find(self._parent[x])
+        return self._parent[x]
+
+    def union(self, a: str, b: str) -> None:
+        ra, rb = self.find(a), self.find(b)
+        if ra == rb:
+            return
+        if self._rank[ra] < self._rank[rb]:
+            ra, rb = rb, ra
+        self._parent[rb] = ra
+        if self._rank[ra] == self._rank[rb]:
+            self._rank[ra] += 1
+
+    def clusters(self, all_ids: List[str]) -> Dict[str, List[str]]:
+        """Return {root: [members]} for every id."""
+        groups: Dict[str, List[str]] = defaultdict(list)
+        for eid in all_ids:
+            groups[self.find(eid)].append(eid)
+        return dict(groups)
+
+
+# ===========================================================================
+# String helpers
+# ===========================================================================
+
+def _normalize(s: str) -> str:
+    if not s:
+        return ""
+    s = s.lower()
+    s = re.sub(r"[^\w\s]", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _levenshtein_similarity(a: str, b: str) -> float:
+    na, nb = _normalize(a), _normalize(b)
+    if not na or not nb:
+        return 0.0
+    return difflib.SequenceMatcher(None, na, nb).ratio()
+
+
+def _token_set_similarity(a: str, b: str) -> float:
+    ta = set(_normalize(a).split())
+    tb = set(_normalize(b).split())
+    if not ta or not tb:
+        return 0.0
+    overlap = len(ta & tb) / max(len(ta), len(tb))
+    if ta <= tb or tb <= ta:
+        overlap = max(overlap, 0.90)
+    return overlap
+
+
+def _alias_similarity(meta_a: Optional[dict], meta_b: Optional[dict]) -> float:
+    def _get_aliases(meta: Optional[dict]) -> set:
+        if not meta:
+            return set()
+        raw = meta.get("aliases") or meta.get("alias") or []
+        if isinstance(raw, list):
+            return {_normalize(str(r)) for r in raw if r}
+        return {_normalize(str(raw))} if raw else set()
+
+    aa, ab = _get_aliases(meta_a), _get_aliases(meta_b)
+    if not aa or not ab:
+        return 0.0
+    return len(aa & ab) / max(len(aa), len(ab))
+
+
+def _combine_scores(scores: List[Tuple[float, float]]) -> float:
+    if not scores:
+        return 0.0
+    total_w  = sum(w for w, _ in scores)
+    total_ws = sum(w * s for w, s in scores)
+    weighted_avg = total_ws / total_w if total_w else 0.0
+    max_score = max(s for _, s in scores)
+    return max(max_score, weighted_avg)
+
+
+# ===========================================================================
+# Pair scoring (pure, no DB needed)
+# ===========================================================================
+
+def _score_pair(a: Entity, b: Entity) -> Tuple[float, List[str]]:
+    """Compute combined similarity score for two entities."""
+    signals: List[Tuple[float, float]] = []
+    reasons: List[str] = []
+
+    # 1. External ID exact match
+    if a.entity_metadata and b.entity_metadata:
+        ea = a.entity_metadata.get("external_ids", {}) or {}
+        eb = b.entity_metadata.get("external_ids", {}) or {}
+        for k, v in ea.items():
+            if k in eb and eb[k] == v:
+                signals.append((5.0, 0.99))
+                reasons.append("external_id")
+                break
+
+    # 2. Fuzzy name (Levenshtein)
+    lev = _levenshtein_similarity(a.name or "", b.name or "")
+    if lev >= 0.60:
+        signals.append((2.0, lev))
+        reasons.append("fuzzy_name")
+
+    # 3. Token-set ratio
+    tok = _token_set_similarity(a.name or "", b.name or "")
+    if tok >= 0.60:
+        signals.append((1.5, tok))
+        reasons.append("token_set")
+
+    # 4. Alias cross-match
+    al = _alias_similarity(a.entity_metadata, b.entity_metadata)
+    if al > 0:
+        signals.append((2.0, al))
+        reasons.append("alias_match")
+
+    if not signals:
+        return 0.0, []
+
+    type_bonus = 0.05 if a.entity_type == b.entity_type else 0.0
+    score = min(1.0, _combine_scores(signals) + type_bonus)
+    return score, list(set(reasons))
+
+
+# ===========================================================================
+# Main service class (async)
+# ===========================================================================
 
 class EntityDeduplicationService:
     """
-    Service for detecting and managing duplicate entities.
-    
-    Uses multiple signals to identify duplicates:
-    - Vector similarity (embeddings)
-    - External ID overlap
-    - Alias/name matching
+    Full graph-clustering entity deduplication service.
+    All public methods are async and accept an AsyncSession from FastAPI.
     """
-    
-    # Thresholds
-    AUTO_MERGE_THRESHOLD = 0.95  # Auto-merge if confidence >= 95%
-    SUGGEST_THRESHOLD = 0.80  # Suggest to user if confidence >= 80%
-    
-    def find_duplicates(self, entity: Entity, limit: int = 20) -> List[Dict]:
+
+    AUTO_MERGE_THRESHOLD = AUTO_MERGE_THRESHOLD
+    SUGGEST_THRESHOLD    = SUGGEST_THRESHOLD
+
+    # ------------------------------------------------------------------
+    # Batch scan — main new feature
+    # ------------------------------------------------------------------
+
+    async def scan_all_for_user(self, user_id: UUID, db: AsyncSession) -> Dict:
         """
-        Find potential duplicate entities using multi-factor matching.
-        
-        Args:
-            entity: Entity to check for duplicates
-            limit: Max number of candidates to return
-        
-        Returns:
-            List of duplicate candidates with confidence scores, sorted by confidence desc
+        Scan ALL entities for a user and return duplicate clusters.
+
+        Uses Union-Find to group transitively related duplicates.
         """
-        candidates = []
-        
-        # 1. Embedding-based similarity search
-        if entity.embedding and len(entity.embedding) > 0:
-            similar = qdrant_entity_service.find_similar_entities(
-                embedding=entity.embedding,
-                limit=limit + 1,  # +1 to account for self-match
-                score_threshold=0.75
+        result = await db.execute(
+            select(Entity).where(Entity.user_id == user_id)
+        )
+        entities: List[Entity] = list(result.scalars().all())
+
+        if not entities:
+            return {
+                "entities_scanned": 0,
+                "duplicate_pairs":  0,
+                "clusters":         [],
+                "auto_merge_count": 0,
+                "stats":            {"by_type": {}},
+            }
+
+        uf = UnionFind()
+        pair_scores: Dict[Tuple[str, str], Dict] = {}
+
+        ent_map = {str(e.id): e for e in entities}
+
+        # Group by type — only compare same-type pairs (O(n²) per type)
+        by_type: Dict[str, List[Entity]] = defaultdict(list)
+        for e in entities:
+            by_type[e.entity_type or "unknown"].append(e)
+
+        type_counts = {k: len(v) for k, v in by_type.items()}
+        total_pairs = 0
+
+        for _etype, group in by_type.items():
+            for i, a in enumerate(group):
+                for b in group[i + 1:]:
+                    score, reasons = _score_pair(a, b)
+                    if score >= MIN_PAIR_SCORE:
+                        total_pairs += 1
+                        key = (str(a.id), str(b.id))
+                        pair_scores[key] = {"score": score, "reasons": reasons}
+                        uf.union(str(a.id), str(b.id))
+
+        # Build clusters from Union-Find
+        all_ids = [str(e.id) for e in entities]
+        cluster_map = uf.clusters(all_ids)
+
+        clusters = []
+        auto_count = 0
+
+        for root, members in cluster_map.items():
+            if len(members) < 2:
+                continue
+
+            cluster_scores: List[float] = []
+            cluster_reasons: set = set()
+            for i, a in enumerate(members):
+                for b in members[i + 1:]:
+                    ps = pair_scores.get((a, b)) or pair_scores.get((b, a))
+                    if ps:
+                        cluster_scores.append(ps["score"])
+                        cluster_reasons.update(ps["reasons"])
+
+            max_conf = max(cluster_scores) if cluster_scores else MIN_PAIR_SCORE
+            avg_conf = sum(cluster_scores) / len(cluster_scores) if cluster_scores else MIN_PAIR_SCORE
+            rec = self._recommendation(max_conf)
+            if rec == "auto_merge":
+                auto_count += 1
+
+            member_dicts = []
+            for mid in members:
+                ent = ent_map.get(mid)
+                if ent:
+                    member_dicts.append({
+                        "id":               str(ent.id),
+                        "name":             ent.name or "",
+                        "entity_type":      ent.entity_type or "",
+                        "occurrence_count": ent.occurrence_count or 0,
+                        "first_seen":       ent.first_seen.isoformat() if ent.first_seen else None,
+                        "last_seen":        ent.last_seen.isoformat()  if ent.last_seen  else None,
+                        "confidence":       ent.confidence,
+                        "metadata":         ent.entity_metadata,
+                    })
+
+            canonical = max(member_dicts, key=lambda m: m["occurrence_count"])
+
+            clusters.append({
+                "cluster_id":     root,
+                "members":        member_dicts,
+                "canonical_id":   canonical["id"],
+                "canonical_name": canonical["name"],
+                "entity_type":    member_dicts[0]["entity_type"],
+                "max_confidence": round(max_conf, 4),
+                "avg_confidence": round(avg_conf, 4),
+                "match_reasons":  sorted(cluster_reasons),
+                "recommendation": rec,
+                "size":           len(members),
+            })
+
+        clusters.sort(key=lambda c: (-int(c["recommendation"] == "auto_merge"), -c["max_confidence"]))
+
+        return {
+            "entities_scanned": len(entities),
+            "duplicate_pairs":  total_pairs,
+            "clusters":         clusters,
+            "auto_merge_count": auto_count,
+            "stats":            {"by_type": type_counts},
+        }
+
+    # ------------------------------------------------------------------
+    # N-way cluster merge
+    # ------------------------------------------------------------------
+
+    async def merge_cluster(
+        self,
+        entity_ids: List[UUID],
+        canonical_id: Optional[UUID],
+        user_id: UUID,
+        db: AsyncSession,
+    ) -> Optional[Dict]:
+        """Merge a cluster of N entities into one canonical entity."""
+        if len(entity_ids) < 2:
+            return None
+
+        result = await db.execute(
+            select(Entity).where(
+                Entity.id.in_(entity_ids),
+                Entity.user_id == user_id,
             )
-            
-            for sim in similar:
-                # Skip self
-                if sim['entity_id'] == str(entity.id):
-                    continue
-                
-                candidates.append({
-                    'entity_id': sim['entity_id'],
-                    'method': 'embedding',
-                    'confidence': sim['similarity'],
-                    'name': sim.get('canonical_name', sim.get('name', '')),
-                    'entity_type': sim.get('type', sim.get('entity_type', ''))
-                })
-        
-        # 2. External ID matching (very high confidence)
-        db = SessionLocal()
-        try:
-            if entity.entity_metadata and entity.entity_metadata.get('external_ids'):
-                ext_ids = entity.entity_metadata['external_ids']
-                
-                # Find entities with matching external IDs
-                for entity_check in db.query(Entity).filter(
-                    Entity.user_id == entity.user_id,
-                    Entity.id != entity.id,
-                    Entity.entity_type == entity.entity_type  # Same type
-                ).all():
-                    if not entity_check.entity_metadata:
-                        continue
-                    
-                    other_ext_ids = entity_check.entity_metadata.get('external_ids', {})
-                    
-                    # Check for any matching external ID
-                    for key, value in ext_ids.items():
-                        if key in other_ext_ids and other_ext_ids[key] == value:
-                            candidates.append({
-                                'entity_id': str(entity_check.id),
-                                'method': 'external_id',
-                                'confidence': 0.99,  # Very high confidence
-                                'name': entity_check.name,
-                                'entity_type': entity_check.entity_type,
-                                'match_key': f'{key}:{value}'
-                            })
-                            break  # One match is enough
-        
-        finally:
-            db.close()
-        
-        # 3. Deduplicate and merge confidence scores
-        candidates_deduped = self._deduplicate_candidates(candidates)
-        
-        # 4. Sort by confidence descending
-        candidates_deduped.sort(key=lambda x: x['confidence'], reverse=True)
-        
-        # 5. Add recommendation
-        for candidate in candidates_deduped:
-            if candidate['confidence'] >= self.AUTO_MERGE_THRESHOLD:
-                candidate['recommendation'] = 'auto_merge'
-            elif candidate['confidence'] >= self.SUGGEST_THRESHOLD:
-                candidate['recommendation'] = 'suggest'
-            else:
-                candidate['recommendation'] = 'review'
-        
-        return candidates_deduped[:limit]
-    
-    def _deduplicate_candidates(self, candidates: List[Dict]) -> List[Dict]:
-        """
-        Remove duplicate candidates and combine confidence scores.
-        
-        If same entity appears multiple times (e.g., from both embedding
-        and external ID matching), take the highest confidence.
-        """
-        seen = {}
-        
-        for candidate in candidates:
-            entity_id = candidate['entity_id']
-            
-            if entity_id in seen:
-                # Combine confidences (take max)
-                seen[entity_id]['confidence'] = max(
-                    seen[entity_id]['confidence'],
-                    candidate['confidence']
-                )
-                
-                # Add method to list
-                if candidate['method'] not in seen[entity_id].get('methods', []):
-                    seen[entity_id].setdefault('methods', []).append(candidate['method'])
-                
-                # Keep additional metadata from external ID match
-                if 'match_key' in candidate:
-                    seen[entity_id]['match_key'] = candidate['match_key']
-            else:
-                # First time seeing this entity
-                candidate['methods'] = [candidate['method']]
-                seen[entity_id] = candidate
-        
-        return list(seen.values())
-    
-    def should_auto_merge(self, confidence: float) -> bool:
-        """
-        Determine if entities should be automatically merged.
-        
-        Args:
-            confidence: Confidence score (0-1)
-        
-        Returns:
-            True if auto-merge recommended (confidence >= 0.95)
-        """
-        return confidence >= self.AUTO_MERGE_THRESHOLD
-    
-    def merge_entities(
+        )
+        ents = {str(e.id): e for e in result.scalars().all()}
+
+        if not ents:
+            return None
+
+        # Pick canonical — highest occurrence_count, or user-specified
+        if canonical_id and str(canonical_id) in ents:
+            target_id = canonical_id
+        else:
+            best = max(ents.values(), key=lambda e: e.occurrence_count or 0)
+            target_id = best.id
+
+        sources = [UUID(str(eid)) for eid in ents if str(eid) != str(target_id)]
+
+        for src_id in sources:
+            await self.merge_entities(src_id, target_id, user_id, db)
+
+        # Re-fetch target (fresh state after merges)
+        tgt_result = await db.execute(
+            select(Entity).where(Entity.id == target_id)
+        )
+        tgt = tgt_result.scalar_one_or_none()
+        return tgt.to_dict() if tgt else None
+
+    # ------------------------------------------------------------------
+    # 2-way merge
+    # ------------------------------------------------------------------
+
+    async def merge_entities(
         self,
         source_id: UUID,
         target_id: UUID,
-        user_id: UUID
+        user_id: UUID,
+        db: AsyncSession,
     ) -> Optional[Entity]:
-        """
-        Merge source entity into target entity.
-        
-        Operations:
-        1. Update all EntityOccurrence records
-        2. Merge aliases and external_ids
-        3. Update frequency count
-        4. Set source.merged_into_id = target_id
-        5. Delete from Qdrant
-        
-        Args:
-            source_id: Entity to merge (will be marked as merged)
-            target_id: Target entity (will receive merged data)
-            user_id: User ID for authorization
-        
-        Returns:
-            Updated target entity or None if error
-        """
-        db = SessionLocal()
-        
-        try:
-            # Get entities
-            source = db.query(Entity).filter(
-                Entity.id == source_id,
-                Entity.user_id == user_id
-            ).first()
-            target = db.query(Entity).filter(
-                Entity.id == target_id,
-                Entity.user_id == user_id
-            ).first()
-            
-            if not source or not target:
-                logger.error("Entity not found for merge", source_id=str(source_id), target_id=str(target_id))
-                return None
-            
-            # Update all activity-entity links
-            from backend.models import ActivityEntityLink
-            db.query(ActivityEntityLink).filter(
-                ActivityEntityLink.entity_id == source_id
-            ).update({ActivityEntityLink.entity_id: target_id})
-            
-            # Merge metadata
-            target_metadata = target.entity_metadata or {}
-            source_metadata = source.entity_metadata or {}
-            target_ext_ids = target_metadata.get('external_ids', {})
-            source_ext_ids = source_metadata.get('external_ids', {})
-            target_ext_ids.update(source_ext_ids)  # Source IDs take precedence
-            target_metadata['external_ids'] = target_ext_ids
-            target.entity_metadata = target_metadata
-            
-            # Update occurrence count
-            target.occurrence_count = (target.occurrence_count or 1) + (source.occurrence_count or 1)
-            
-            # Mark source as merged (soft delete)
-            db.delete(source)
-            
-            # Commit changes
-            db.commit()
-            
-            # Delete source from Qdrant
-            qdrant_entity_service.delete_entity(source_id)
-            
-            logger.info(
-                "Entities merged successfully",
-                source_id=str(source_id),
-                target_id=str(target_id),
-                new_occurrence_count=target.occurrence_count
-            )
-            
-            # Refresh target to get latest data
-            db.refresh(target)
-            return target
-            
-        except Exception as e:
-            db.rollback()
-            logger.error("Failed to merge entities", error=str(e), source=str(source_id), target=str(target_id))
+        """Merge source into target. Redirects activity links, carries aliases/ext-IDs."""
+        src_result = await db.execute(
+            select(Entity).where(Entity.id == source_id, Entity.user_id == user_id)
+        )
+        source = src_result.scalar_one_or_none()
+
+        tgt_result = await db.execute(
+            select(Entity).where(Entity.id == target_id, Entity.user_id == user_id)
+        )
+        target = tgt_result.scalar_one_or_none()
+
+        if not source or not target:
+            logger.error("Entity not found for merge",
+                         source_id=str(source_id), target_id=str(target_id))
             return None
-            
-        finally:
-            db.close()
+
+        # Redirect activity links
+        links_result = await db.execute(
+            select(ActivityEntityLink).where(ActivityEntityLink.entity_id == source_id)
+        )
+        for link in links_result.scalars().all():
+            link.entity_id = target_id
+
+        # Merge metadata
+        t_meta = dict(target.entity_metadata or {})
+        s_meta = dict(source.entity_metadata or {})
+
+        t_ext = dict(t_meta.get("external_ids") or {})
+        t_ext.update(s_meta.get("external_ids") or {})
+        t_meta["external_ids"] = t_ext
+
+        t_aliases = set(t_meta.get("aliases") or [])
+        t_aliases.update(s_meta.get("aliases") or [])
+        t_aliases.add(source.name or "")
+        t_meta["aliases"] = sorted(filter(None, t_aliases))
+
+        target.entity_metadata = t_meta
+        target.occurrence_count = (target.occurrence_count or 1) + (source.occurrence_count or 1)
+
+        await db.delete(source)
+        await db.flush()
+
+        logger.info("Entities merged",
+                    source=str(source_id), target=str(target_id),
+                    new_count=target.occurrence_count)
+
+        # Try to delete from Qdrant (non-fatal)
+        try:
+            from services.qdrant_entity_service import qdrant_entity_service
+            qdrant_entity_service.delete_entity(source_id)
+        except Exception as qe:
+            logger.warning("Qdrant delete failed (non-fatal)", error=str(qe))
+
+        return target
+
+    # ------------------------------------------------------------------
+    # Per-entity duplicate detection (sync text-signal only, no DB)
+    # ------------------------------------------------------------------
+
+    def find_candidates_for_entity(
+        self, entity: Entity, all_entities: List[Entity], limit: int = 20
+    ) -> List[Dict]:
+        """
+        Find duplicates for a single entity against a pre-fetched list.
+        Pure computation — no DB calls.
+        """
+        candidates = []
+        for other in all_entities:
+            if str(other.id) == str(entity.id):
+                continue
+            score, reasons = _score_pair(entity, other)
+            if score < MIN_PAIR_SCORE:
+                continue
+            candidates.append({
+                "entity_id":    str(other.id),
+                "name":         other.name or "",
+                "entity_type":  other.entity_type or "",
+                "confidence":   round(score, 4),
+                "match_reasons": reasons,
+                "recommendation": self._recommendation(score),
+            })
+
+        candidates.sort(key=lambda c: -c["confidence"])
+        return candidates[:limit]
+
+    def should_auto_merge(self, confidence: float) -> bool:
+        return confidence >= AUTO_MERGE_THRESHOLD
+
+    def _recommendation(self, confidence: float) -> str:
+        if confidence >= AUTO_MERGE_THRESHOLD:
+            return "auto_merge"
+        if confidence >= SUGGEST_THRESHOLD:
+            return "suggest"
+        return "review"
 
 
-# Global instance
+# Global singleton
 deduplication_service = EntityDeduplicationService()

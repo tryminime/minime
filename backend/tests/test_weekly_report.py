@@ -14,8 +14,8 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from backend.services.weekly_report_service import WeeklyReportService
-from backend.models.analytics_models import WeeklyReport
+from services.weekly_report_service import WeeklyReportService
+from models.analytics_models import WeeklyReport
 
 
 class TestWeeklyReportService:

@@ -80,6 +80,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     networks:
       - minime-network
 

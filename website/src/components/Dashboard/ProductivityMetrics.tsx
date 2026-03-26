@@ -2,11 +2,11 @@
 
 import { TrendingUp, Zap, Clock, Users, Shuffle, Activity } from 'lucide-react';
 import { StatCard } from '@/components/Common/StatCard';
-import { useProductivityDaily } from '@/lib/hooks/useProductivityMetrics';
-import { formatDuration } from '@/lib/utils';
+import { useProductivityTrend, type ProductivityMetrics as ProductivityMetricsType } from '@/lib/hooks/useProductivityMetrics';
 
 export function ProductivityMetrics() {
-    const { data, isLoading, error } = useProductivityDaily();
+    // Fetch last 7 days of metrics to find the most recent active day
+    const { data: trendData, isLoading, error } = useProductivityTrend(7);
 
     if (isLoading) {
         return (
@@ -18,7 +18,7 @@ export function ProductivityMetrics() {
         );
     }
 
-    if (error || !data) {
+    if (error || !trendData || trendData.length === 0) {
         return (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-red-600">Failed to load productivity metrics</p>
@@ -26,26 +26,51 @@ export function ProductivityMetrics() {
         );
     }
 
+    // Find the most recent day that has activities, fallback to the very last day (today)
+    const validData = trendData.filter((d): d is ProductivityMetricsType => d !== null);
+    const activeDays = validData.filter(d => d.activity_count > 0);
+    const data = activeDays.length > 0 ? activeDays[activeDays.length - 1] : validData[validData.length - 1];
+
+    if (!data) {
+        return null;
+    }
+
+    // For yesterday's delta, find the active day before 'data'
+    const dataIndex = validData.findIndex(d => d.date === data.date);
+    const yData = dataIndex > 0 ? validData[dataIndex - 1] : null;
+
+    // Compute real deltas versus "yesterday" (or previous active day)
+    const focusDelta = yData ? data.focus_score - yData.focus_score : 0;
+    const prodDelta = yData ? data.productivity_score - yData.productivity_score : 0;
+    const focusChangeText = yData
+        ? `${focusDelta >= 0 ? '+' : ''}${focusDelta.toFixed(0)}pts from previous session`
+        : 'No prior data';
+    const prodChangeText = yData
+        ? `${prodDelta >= 0 ? '+' : ''}${prodDelta.toFixed(0)}pts from previous session`
+        : 'No prior data';
+
+    const deepWorkHours = (data.deep_work_sessions * 25 / 60);  // 25min min per session
+
     const metrics = [
         {
             title: 'Focus Score',
             value: data.focus_score.toFixed(1),
-            change: '+5% from yesterday',
-            changeType: 'positive' as 'positive' | 'negative' | 'neutral',
+            change: focusChangeText,
+            changeType: (focusDelta > 0 ? 'positive' : focusDelta < 0 ? 'negative' : 'neutral') as 'positive' | 'negative' | 'neutral',
             icon: <Zap className="w-5 h-5" />,
         },
         {
             title: 'Productivity Score',
             value: data.productivity_score.toFixed(1),
-            change: '+3% from yesterday',
-            changeType: 'positive' as 'positive' | 'negative' | 'neutral',
+            change: prodChangeText,
+            changeType: (prodDelta > 0 ? 'positive' : prodDelta < 0 ? 'negative' : 'neutral') as 'positive' | 'negative' | 'neutral',
             icon: <TrendingUp className="w-5 h-5" />,
         },
         {
             title: 'Deep Work Sessions',
             value: data.deep_work_sessions,
-            change: `${formatDuration(data.deep_work_sessions * 45 * 60)}`,
-            changeType: 'neutral' as 'positive' | 'negative' | 'neutral',
+            change: `${deepWorkHours.toFixed(1)}h estimated`,
+            changeType: (data.deep_work_sessions > 0 ? 'positive' : 'neutral') as 'positive' | 'negative' | 'neutral',
             icon: <Clock className="w-5 h-5" />,
         },
         {

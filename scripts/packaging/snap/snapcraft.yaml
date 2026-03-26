@@ -1,0 +1,56 @@
+# MiniMe Snapcraft configuration
+# Build and publish to the Snap Store: https://snapcraft.io/store
+
+name: minime
+version: '0.2.0'
+summary: Privacy-first activity intelligence platform
+description: |
+  MiniMe runs quietly in the background, tracking your work activity locally
+  and building a private knowledge graph of your projects, skills, and focus.
+
+  All processing happens on-device. No raw activity data leaves your machine.
+
+  Features:
+    - Automatic activity tracking (apps, windows, URLs)
+    - Semantic Knowledge Graph of your work
+    - AI Copilot to chat with your history
+    - Cloud Sync (Google Drive + OneDrive, encrypted)
+    - Knowledge Library with semantic search
+
+  Learn more: https://tryminime.com
+
+grade: stable
+confinement: strict
+base: core22
+
+# ── Architectures ───────────────────────────────────────────────────────────
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+
+# ── Apps ────────────────────────────────────────────────────────────────────
+apps:
+  minime:
+    command: usr/bin/minime
+    plugs:
+      - home
+      - network
+      - network-bind
+      - x11
+      - wayland
+      - opengl
+      - audio-playback
+      - desktop
+      - desktop-legacy
+    desktop: usr/share/applications/minime.desktop
+
+# ── Parts ────────────────────────────────────────────────────────────────────
+parts:
+  minime:
+    plugin: dump
+    source: https://github.com/tryminime/minime/releases/download/v0.2.0/minime-0.2.0-linux-x86_64.tar.gz
+    source-type: tar
+    stage-packages:
+      - libwebkit2gtk-4.1-0
+      - libayatana-appindicator3-1
+      - librsvg2-bin

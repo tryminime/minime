@@ -9,9 +9,9 @@ import numpy as np
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
-from backend.services.node2vec_service import Node2VecService
-from backend.services.community_service import CommunityService
-from backend.services.centrality_service import CentralityService
+from services.node2vec_service import Node2VecService
+from services.community_service import CommunityService
+from services.centrality_service import CentralityService
 
 
 class TestNode2VecService:
@@ -284,7 +284,7 @@ class TestGraphAPIIntegration:
     def client(self):
         """Create test client."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+        from main import app
         return TestClient(app)
     
     @pytest.fixture

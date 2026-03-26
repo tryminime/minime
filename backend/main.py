@@ -13,11 +13,11 @@ import time
 import uuid
 import structlog
 
-from backend.config import settings
-from backend.database.postgres import init_db, close_db
-from backend.database.neo4j_client import init_neo4j, close_neo4j
-from backend.database.redis_client import init_redis, close_redis
-from backend.database.qdrant_client import init_qdrant, close_qdrant
+from config import settings
+from database.postgres import init_db, close_db
+from database.neo4j_client import init_neo4j, close_neo4j
+from database.redis_client import init_redis, close_redis
+from database.qdrant_client import init_qdrant, close_qdrant
 
 
 # Configure structured logging
@@ -41,37 +41,51 @@ async def lifespan(app: FastAPI):
         if settings.ENVIRONMENT != "development":
             raise
         
-    # Initialize Neo4j
+    # Initialize Neo4j (optional — graph explorer won't work without it)
     try:
         await init_neo4j()
         logger.info("Neo4j initialized")
     except Exception as e:
-        logger.warning("Neo4j initialization failed", error=str(e))
-        if settings.ENVIRONMENT != "development":
-            raise
+        logger.warning("Neo4j initialization failed (non-fatal)", error=str(e))
         
-    # Initialize Redis
+    # Initialize Redis (optional — caching/queues degraded without it)
     try:
         await init_redis()
         logger.info("Redis initialized")
     except Exception as e:
-        logger.warning("Redis initialization failed", error=str(e))
-        if settings.ENVIRONMENT != "development":
-            raise
+        logger.warning("Redis initialization failed (non-fatal)", error=str(e))
         
-    # Initialize Qdrant
+    # Initialize Qdrant (optional — vector search won't work without it)
     try:
         await init_qdrant()
         logger.info("Qdrant initialized")
     except Exception as e:
-        logger.warning("Qdrant initialization failed", error=str(e))
-        if settings.ENVIRONMENT != "development":
-            raise
+        logger.warning("Qdrant initialization failed (non-fatal)", error=str(e))
     
+    # Start sync scheduler (Phase 3c — after all DBs are ready)
+    try:
+        from services.sync_scheduler import start_scheduler
+        await start_scheduler()
+        logger.info("Sync scheduler started")
+    except Exception as e:
+        logger.warning("Sync scheduler start failed (non-fatal)", error=str(e))
+
     yield
     
     # Cleanup on shutdown
     logger.info("Shutting down MiniMe API")
+    # Stop sync scheduler
+    try:
+        from services.sync_scheduler import stop_scheduler
+        await stop_scheduler()
+    except Exception:
+        pass
+    # Close cloud DB clients
+    try:
+        from database.cloud_db_clients import close_all_cloud_clients
+        await close_all_cloud_clients()
+    except Exception:
+        pass
     await close_db()
     await close_neo4j()
     await close_redis()
@@ -181,7 +195,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 # =====================================================
 
 # Import and include OAuth Integrations router
-from backend.api.v1 import integrations, waitlist
+from api.v1 import integrations, waitlist
 app.include_router(integrations.router)
 
 # Include Waitlist router
@@ -214,9 +228,57 @@ async def readiness_check():
         "qdrant": False
     }
     
-    # TODO: Implement actual connectivity checks
-    # For now, assume healthy if app started
-    checks = {k: True for k in checks}
+    # Check PostgreSQL connectivity
+    try:
+        from database.postgres import get_db
+        from sqlalchemy import text
+        async for db in get_db():
+            await db.execute(text("SELECT 1"))
+            checks["postgres"] = True
+            break
+    except Exception:
+        checks["postgres"] = False
+
+    # Check Neo4j (optional — skip if not configured)
+    try:
+        from config.settings import settings as _settings
+        if _settings.NEO4J_URI:
+            from database.neo4j_client import get_neo4j_driver
+            driver = get_neo4j_driver()
+            if driver:
+                driver.verify_connectivity()
+                checks["neo4j"] = True
+            else:
+                checks["neo4j"] = True  # Not configured = skip
+        else:
+            checks["neo4j"] = True  # Not configured = skip
+    except Exception:
+        checks["neo4j"] = False
+
+    # Check Redis (optional — skip if not configured)
+    try:
+        import redis as _redis
+        from config.settings import settings as _rs
+        if _rs.REDIS_URL:
+            r = _redis.from_url(_rs.REDIS_URL, socket_connect_timeout=2)
+            r.ping()
+            checks["redis"] = True
+        else:
+            checks["redis"] = True  # Not configured = skip
+    except Exception:
+        checks["redis"] = False
+
+    # Check Qdrant (optional — skip if not configured)
+    try:
+        from config.settings import settings as _qs
+        if _qs.QDRANT_URL:
+            import httpx
+            resp = httpx.get(f"{_qs.QDRANT_URL}/healthz", timeout=2.0)
+            checks["qdrant"] = resp.status_code == 200
+        else:
+            checks["qdrant"] = True  # Not configured = skip
+    except Exception:
+        checks["qdrant"] = False
     
     all_healthy = all(checks.values())
     
@@ -244,7 +306,7 @@ async def root():
 
 
 # Import all API route routers
-from backend.api.v1 import (
+from api.v1 import (
     auth,
     users,
     activities,
@@ -252,12 +314,13 @@ from backend.api.v1 import (
     graph,
     analytics,
     realtime,
-    activity_ingestion  # Batch ingestion API
+    activity_ingestion,  # Batch ingestion API
+    enrichment_api,  # Entity extraction & enrichment
 )
-from backend.websocket import stream_endpoint  # WebSocket streaming
+from websocket import stream_endpoint  # WebSocket streaming
 
 # Import new settings and AI chat routers
-from backend.api import settings as settings_api, ai_chat
+from api import settings as settings_api, ai_chat
 
 # Include all routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["Authentication"])
@@ -265,6 +328,7 @@ app.include_router(users.router, prefix=f"{settings.API_V1_PREFIX}/users", tags=
 app.include_router(activities.router, prefix=f"{settings.API_V1_PREFIX}/activities", tags=["Activities"])
 app.include_router(activity_ingestion.router, prefix=settings.API_V1_PREFIX, tags=["Activity Ingestion"])  # NEW
 app.include_router(entities.router, prefix=f"{settings.API_V1_PREFIX}/entities", tags=["Entities"])
+app.include_router(enrichment_api.router, prefix=f"{settings.API_V1_PREFIX}/enrichment", tags=["Enrichment"])
 app.include_router(graph.router, prefix=f"{settings.API_V1_PREFIX}/graph", tags=["Knowledge Graph"])
 app.include_router(analytics.router, prefix=f"{settings.API_V1_PREFIX}/analytics", tags=["Analytics"])
 app.include_router(realtime.router, prefix=f"{settings.API_V1_PREFIX}/realtime", tags=["Real-time Updates"])
@@ -277,16 +341,43 @@ app.include_router(ai_chat.ai_router, tags=["AI Chat"])
 app.include_router(stream_endpoint.router, prefix=settings.API_V1_PREFIX, tags=["WebSocket"])
 
 # Include Screenshots API
-from backend.api.v1 import screenshots
+from api.v1 import screenshots
 app.include_router(screenshots.router, prefix=f"{settings.API_V1_PREFIX}/screenshots", tags=["Screenshots"])
 
 # Include Wearables API
-from backend.api.v1 import wearables
+from api.v1 import wearables
 app.include_router(wearables.router, prefix=f"{settings.API_V1_PREFIX}/wearables", tags=["Wearables"])
 
 # Include Billing API
-from backend.api.v1 import billing
+from api.v1 import billing
 app.include_router(billing.router, prefix=f"{settings.API_V1_PREFIX}/billing", tags=["Billing"])
+
+# Phase 3: Content Intelligence
+from api.v1 import content_ingestion, documents as documents_api
+app.include_router(content_ingestion.router, tags=["Content Intelligence"])
+app.include_router(documents_api.router, tags=["Documents"])
+
+# Phase 2: Cloud Sync (Google Drive + OneDrive)
+from api.v1 import cloud_backup
+app.include_router(cloud_backup.router, tags=["Cloud Sync"])
+
+# Phase 3b/3c: Cloud Sync Service (local → cloud push + scheduler)
+from api.v1 import sync as sync_api
+app.include_router(sync_api.router, tags=["Cloud Sync"])
+
+# Phase 4b: Encrypted export/import (.mmexport)
+from api.v1 import export as export_api
+app.include_router(export_api.router, tags=["Data Export"])
+
+# Phase 4: Account management (GDPR delete + export)
+from api.v1 import account as account_api
+app.include_router(account_api.router, tags=["Account"])
+
+# Super Admin panel
+from api.v1 import admin as admin_api
+app.include_router(admin_api.router, prefix=settings.API_V1_PREFIX, tags=["Admin"])
+
+
 
 
 # =====================================================

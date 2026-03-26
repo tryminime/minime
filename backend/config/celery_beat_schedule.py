@@ -8,7 +8,7 @@ Schedules:
 """
 
 from celery.schedules import crontab
-from backend.config.celery_config import celery_app
+from config.celery_config import celery_app
 
 
 # Configure Celery Beat periodic tasks
@@ -30,6 +30,12 @@ celery_app.conf.beat_schedule = {
     'neo4j-sync-30min': {
         'task': 'sync_all_entities_to_neo4j',
         'schedule': crontab(minute='*/30'),  # Every 30 minutes
+    },
+
+    # Scheduled report delivery — runs daily at 9:00 AM
+    'scheduled-reports-daily': {
+        'task': 'process_scheduled_reports',
+        'schedule': crontab(hour=9, minute=0),  # Daily at 09:00 UTC
     },
 }
 

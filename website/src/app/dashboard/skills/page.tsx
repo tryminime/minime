@@ -48,9 +48,10 @@ export default function SkillsPage() {
                     <StatCard
                         title="Skill Diversity"
                         value={`${data.skill_diversity.toFixed(1)}%`}
-                        change="Across categories"
+                        change="Breadth of categories"
                         changeType="positive"
                         icon={<BarChart className="w-5 h-5" />}
+                        tooltip="Percentage of available skill categories you are actively developing."
                     />
                     <StatCard
                         title="Learning Velocity"
@@ -91,16 +92,30 @@ export default function SkillsPage() {
                 </div>
             )}
 
-            {/* Tips */}
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                <h3 className="font-semibold text-indigo-900 mb-2">💡 Skill Development Tips</h3>
-                <ul className="text-sm text-indigo-800 space-y-1">
-                    <li>• Focus on depth over breadth - master a few skills deeply</li>
-                    <li>• Regularly practice skills to maintain mastery levels</li>
-                    <li>• Learn complementary skills to build a well-rounded profile</li>
-                    <li>• Track progress weekly to see your growth trajectory</li>
-                </ul>
-            </div>
+            {/* Dynamic Tips */}
+            {(() => {
+                const tips: string[] = [];
+                if (data) {
+                    if (data.skill_diversity < 30) tips.push(`Your skill diversity is ${data.skill_diversity.toFixed(0)}% — try exploring new categories to become more well-rounded`);
+                    if (data.advanced_skills === 0) tips.push('No advanced skills yet — focus on deepening mastery in your top skills to reach 70%+');
+                    else tips.push(`You have ${data.advanced_skills} advanced skill${data.advanced_skills > 1 ? 's' : ''} — great depth!`);
+                    if (data.learning_velocity > 2) tips.push(`Learning velocity of ${data.learning_velocity.toFixed(1)} skills/month — you're picking up skills fast!`);
+                    else tips.push('Try dedicating regular time blocks to skill development to increase your learning velocity');
+                    if (data.top_skills.length > 0) tips.push(`Your strongest area is ${data.top_skills[0].category} — consider pairing it with complementary skills`);
+                } else {
+                    tips.push('Focus on depth over breadth - master a few skills deeply');
+                    tips.push('Regularly practice skills to maintain mastery levels');
+                    tips.push('Track progress weekly to see your growth trajectory');
+                }
+                return (
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-indigo-900 mb-2">💡 Skill Development Tips</h3>
+                        <ul className="text-sm text-indigo-800 space-y-1">
+                            {tips.map((tip, i) => <li key={i}>• {tip}</li>)}
+                        </ul>
+                    </div>
+                );
+            })()}
         </div>
     );
 }

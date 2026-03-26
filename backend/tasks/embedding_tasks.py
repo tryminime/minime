@@ -8,7 +8,7 @@ from typing import Dict, Any
 import logging
 from datetime import datetime
 
-from backend.services.node2vec_service import node2vec_service
+from services.node2vec_service import node2vec_service
 
 logger = logging.getLogger(__name__)
 

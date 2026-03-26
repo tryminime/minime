@@ -10,8 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text
-from backend.database.postgres import engine
-from backend.models.integration_models import Integration
+from database.postgres import engine
+from models.integration_models import Integration
 
 
 async def run_migration():

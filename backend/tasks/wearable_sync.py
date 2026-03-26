@@ -4,7 +4,7 @@ Wearable Data Sync — Celery Periodic Task.
 Runs every 15 minutes to sync wearable data from all connected providers.
 """
 
-from backend.tasks.celery_app import celery_app
+from tasks.celery_app import celery_app
 import structlog
 
 logger = structlog.get_logger()
@@ -27,8 +27,8 @@ def sync_wearable_data(self):
 async def _sync_all_wearables():
     """Async implementation of the sync task."""
     from sqlalchemy import text
-    from backend.database.postgres import async_session_factory
-    from backend.services.wearable_service import WearableService
+    from database.postgres import async_session_factory
+    from services.wearable_service import WearableService
 
     try:
         async with async_session_factory() as db:

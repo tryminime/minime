@@ -2,12 +2,26 @@
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use crate::tracker::ActivityEvent;
+use crate::tracker::{ActivityEvent, ActivityType};
 use std::time::Duration;
+
+/// Maps ActivityEvent to the backend's ActivityCreate schema
+#[derive(Debug, Serialize)]
+struct ActivityCreatePayload {
+    #[serde(rename = "type")]
+    activity_type: String,
+    source: String,
+    app: Option<String>,
+    title: Option<String>,
+    domain: Option<String>,
+    url: Option<String>,
+    duration_seconds: Option<i64>,
+    data: serde_json::Value,
+}
 
 #[derive(Debug, Serialize)]
 struct SyncRequest {
-    activities: Vec<ActivityEvent>,
+    activities: Vec<ActivityCreatePayload>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,16 +61,57 @@ impl SyncManager {
         
         let url = format!("{}/api/v1/activities/sync", self.api_url);
         
+        // Map ActivityEvent to the backend's ActivityCreate schema
+        let payloads: Vec<ActivityCreatePayload> = activities.into_iter().map(|a| {
+            let type_str = match a.activity_type {
+                ActivityType::WindowFocus => "window_focus",
+                ActivityType::AppSwitch   => "app_focus",
+                ActivityType::Idle        => "idle",
+                ActivityType::Break       => "break",
+                ActivityType::FocusPeriod => "focus_period",
+                ActivityType::ReadingAnalytics => "reading_analytics",
+            }.to_string();
+
+            let mut data = serde_json::json!({
+                "device_id": a.device_id,
+                "is_idle": a.is_idle,
+                "timestamp": a.timestamp.to_rfc3339(),
+            });
+
+            // Attach input metrics if present
+            if let Some(ref metrics) = a.input_metrics {
+                data["input_metrics"] = serde_json::json!({
+                    "keystrokes_per_minute": metrics.keystrokes_per_minute,
+                    "mouse_distance_px": metrics.mouse_distance_px,
+                    "mouse_click_count": metrics.mouse_click_count,
+                    "activity_level": metrics.activity_level,
+                });
+            }
+            
+            ActivityCreatePayload {
+                activity_type: type_str,
+                source: "desktop".to_string(),
+                app: a.app_name.clone(),
+                title: a.window_title.clone(),
+                domain: a.domain.clone(),
+                url: None,
+                duration_seconds: a.duration_seconds,
+                data,
+            }
+        }).collect();
+        
         let response = self.client
             .post(&url)
             .header("Authorization", format!("Bearer {}", token))
-            .json(&SyncRequest { activities })
+            .json(&SyncRequest { activities: payloads })
             .send()
             .await
             .map_err(|e| format!("Request failed: {}", e))?;
         
         if !response.status().is_success() {
-            return Err(format!("Sync failed with status: {}", response.status()));
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(format!("Sync failed with status: {} — {}", status, body));
         }
         
         response.json::<SyncResponse>()

@@ -12,9 +12,9 @@ from datetime import datetime
 from functools import wraps
 from prometheus_client import Counter, Histogram, Gauge
 
-from backend.config.neo4j_config import get_neo4j_session
-from backend.services.relationship_validator import relationship_validator
-from backend.models.graph_models import (
+from config.neo4j_config import get_neo4j_session
+from services.relationship_validator import relationship_validator
+from models.graph_models import (
     NodeType,
     PersonNode,
     PaperNode,

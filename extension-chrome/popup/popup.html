@@ -4,103 +4,140 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MiniMe - Activity Intelligence</title>
-  <!-- Google Fonts - Inter -->
+  <title>MiniMe — Activity Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- MiniMe Design System -->
-  <link rel="stylesheet" href="../styles/design-system.css">
-  <!-- Popup Styles -->
   <link rel="stylesheet" href="popup-enhanced.css">
 </head>
 
 <body>
   <div class="popup-container">
 
-    <!-- HEADER SECTION (48px) -->
+    <!-- ── HEADER ──────────────────────────────────────── -->
     <header class="popup-header">
       <div class="header-left">
-        <img src="../assets/MiniMe-icon.png" alt="MiniMe" class="header-logo">
-        <h1 class="header-title">MiniMe</h1>
+        <div class="header-logo-wrap">
+          <img src="../assets/MiniMe-icon.png" alt="MiniMe" class="header-logo">
+        </div>
+        <div class="header-brand">
+          <h1 class="header-title">MiniMe</h1>
+          <p class="header-subtitle">Activity Intelligence</p>
+        </div>
       </div>
-      <button class="header-settings" id="settingsBtn" title="Settings">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-          stroke-linejoin="round">
-          <circle cx="10" cy="10" r="3" />
-          <path
-            d="M13.7 6.3a7 7 0 0 1 0 7.4M6.3 13.7a7 7 0 0 1 0-7.4M13.7 13.7a7 7 0 0 0 0-7.4M6.3 6.3a7 7 0 0 0 0 7.4" />
-        </svg>
-      </button>
+      <div class="header-actions">
+        <button class="header-icon-btn" id="settingsBtn" title="Settings">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="7.5" cy="7.5" r="2.5"/>
+            <path d="M7.5 1v1.5M7.5 12V13.5M1 7.5h1.5M12 7.5h1.5M3.2 3.2l1 1M10.3 10.3l1 1M3.2 11.8l1-1M10.3 4.7l1-1"/>
+          </svg>
+        </button>
+      </div>
     </header>
 
-    <!-- STATUS INDICATOR (32px) -->
-    <div class="status-indicator" id="statusIndicator">
-      <span class="status-dot" id="statusDot"></span>
-      <span class="status-text" id="statusText">Tracking activity...</span>
+    <!-- ── LOGIN SECTION (shown when not authenticated) ── -->
+    <div id="loginSection" style="display:none;" class="login-section">
+      <p class="login-title">Welcome to MiniMe</p>
+      <p class="login-sub">Sign in to start tracking &amp; syncing your activity</p>
+      <input id="loginEmail" type="email" placeholder="Email" autocomplete="email" class="form-field">
+      <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" class="form-field">
+      <button id="loginBtn" class="login-btn">Sign In</button>
+      <p id="loginError" class="login-error"></p>
     </div>
 
-    <!-- CURRENT ACTIVITY CARD (64px) -->
-    <div class="current-activity" id="currentActivity">
-      <img class="activity-favicon" id="currentFavicon" src="../assets/MiniMe-icon.png" alt="">
-      <div class="activity-info">
-        <div class="activity-domain" id="currentDomain">Loading...</div>
-        <div class="activity-time" id="currentTime">0s</div>
+    <!-- ── TRACKING UI (shown when authenticated) ──────── -->
+    <div id="trackingSection">
+
+      <!-- Status Bar -->
+      <div class="status-bar" id="statusIndicator">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-text" id="statusText">Tracking activity…</span>
+        <span class="status-badge" id="statusBadge">Live</span>
       </div>
-      <div class="live-indicator">●</div>
-    </div>
 
-    <!-- TODAY'S STATS (60px) -->
-    <div class="stats-card">
-      <div class="stats-title">ACTIVITY TODAY</div>
-      <div class="stats-grid">
-        <div class="stat">
-          <div class="stat-icon">⏱️</div>
-          <div class="stat-value" id="totalTime">0h 0m</div>
-          <div class="stat-label">Total time</div>
+      <!-- Current Activity Card -->
+      <div class="current-activity" id="currentActivity">
+        <div class="favicon-wrap">
+          <img class="activity-favicon" id="currentFavicon" src="../assets/MiniMe-icon.png" alt="">
         </div>
-        <div class="stat">
-          <div class="stat-icon">🌐</div>
-          <div class="stat-value" id="pagesVisited">0</div>
-          <div class="stat-label">Pages</div>
+        <div class="activity-info">
+          <div class="activity-domain" id="currentDomain">Loading…</div>
+          <div class="activity-time" id="currentTime">0s</div>
         </div>
-        <div class="stat">
-          <div class="stat-icon">🏷️</div>
-          <div class="stat-value" id="entitiesFound">0</div>
-          <div class="stat-label">Entities</div>
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          LIVE
         </div>
       </div>
-    </div>
 
-    <!-- RECENT ACTIVITIES (200px scrollable) -->
-    <div class="recent-activities">
-      <div class="recent-title">RECENT ACTIVITY</div>
-      <div class="recent-list" id="recentList">
-        <!-- Populated by JavaScript -->
-        <div class="activity-item">
-          <img class="favicon" src="../assets/MiniMe-icon.png" alt="">
-          <div class="domain">No recent activity</div>
-          <div class="time">--</div>
+      <!-- Stats Grid -->
+      <div class="stats-section">
+        <div class="section-label">Today's Activity</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-value" id="totalTime">0h 0m</div>
+            <div class="stat-label">Total</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🌐</div>
+            <div class="stat-value" id="pagesVisited">0</div>
+            <div class="stat-label">Pages</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🏷️</div>
+            <div class="stat-value" id="entitiesFound">0</div>
+            <div class="stat-label">Entities</div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- ACTION BUTTONS (48px) -->
-    <div class="action-buttons">
-      <button class="btn btn-secondary" id="pauseBtn">
-        <span id="pauseBtnText">Pause</span>
-      </button>
-      <button class="btn btn-primary" id="dashboardBtn">
-        <span>Dashboard</span>
-      </button>
-      <button class="btn btn-secondary" id="syncBtn">
-        <span>Sync</span>
-      </button>
-    </div>
+      <!-- Recent Activity List -->
+      <div class="recent-section">
+        <div class="section-label">Recent Activity</div>
+        <div class="recent-list" id="recentList">
+          <div class="activity-item">
+            <img class="favicon" src="../assets/MiniMe-icon.png" alt="">
+            <div class="domain">No recent activity</div>
+            <div class="time">–</div>
+          </div>
+        </div>
+      </div>
 
-  </div>
+      <!-- Page Content Status (Chrome only) -->
+      <div class="content-status-wrapper" id="contentStatusWrapper">
+        <div class="section-label" style="margin-top:8px;">Page Content</div>
+        <div id="content-status-section">
+          <div class="content-status-card">
+            <div class="cs-header">
+              <span class="cs-icon">📄</span>
+              <span class="cs-label">Loading status…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button class="btn btn-secondary" id="pauseBtn">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="3" height="8"/><rect x="7" y="2" width="3" height="8"/></svg>
+          <span id="pauseBtnText">Pause</span>
+        </button>
+        <button class="btn btn-primary" id="dashboardBtn">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="4" height="4"/><rect x="7" y="1" width="4" height="4"/><rect x="1" y="7" width="4" height="4"/><rect x="7" y="7" width="4" height="4"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="btn btn-secondary" id="syncBtn">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M1 20v-6l7.5-7.5a5 5 0 0 1 7 0l5.5 5.5"/></svg>
+          <span>Sync</span>
+        </button>
+      </div>
+
+    </div><!-- end trackingSection -->
+  </div><!-- end popup-container -->
 
   <script type="module" src="popup.js"></script>
+  <script type="module" src="content-status.js"></script>
 </body>
 
 </html>

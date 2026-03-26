@@ -188,7 +188,7 @@ pub fn capture_screenshot(
     state: State<'_, AppState>,
 ) -> Result<crate::screenshot::CaptureResult, String> {
     let mgr = state.screenshot_manager.lock().unwrap();
-    mgr.capture(label)
+    mgr.capture(label, None)
 }
 
 #[tauri::command]
@@ -198,7 +198,7 @@ pub fn capture_screenshot_monitor(
     state: State<'_, AppState>,
 ) -> Result<crate::screenshot::CaptureResult, String> {
     let mgr = state.screenshot_manager.lock().unwrap();
-    mgr.capture_monitor_by_index(monitor_index, label)
+    mgr.capture_monitor_by_index(monitor_index, label, None)
 }
 
 #[tauri::command]

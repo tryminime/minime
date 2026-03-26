@@ -288,8 +288,8 @@ mod module1_tests {
         }
 
         #[test]
-        fn test_stub_input_monitor() {
-            let mut monitor = StubInputMonitor::new();
+        fn test_linux_input_monitor() {
+            let mut monitor = LinuxInputMonitor::new();
             assert!(monitor.start().is_ok());
             let m = monitor.get_metrics();
             assert_eq!(m.keystroke_count, 0);
@@ -478,6 +478,8 @@ mod module1_tests {
                 height: 1080,
                 file_size_bytes: 204800,
                 label: Some("Debug screenshot".to_string()),
+                app_name: Some("VS Code".to_string()),
+                window_title: Some("main.rs".to_string()),
             };
 
             let json = serde_json::to_string(&meta).unwrap();
@@ -502,6 +504,8 @@ mod module1_tests {
                     height: 1440,
                     file_size_bytes: 512000,
                     label: None,
+                    app_name: None,
+                    window_title: None,
                 },
                 success: true,
                 message: "Screenshot captured successfully".to_string(),

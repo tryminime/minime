@@ -82,12 +82,14 @@ impl Encryptor {
     /// Encrypt string to base64
     pub fn encrypt_string(&self, data: &str) -> Result<String, Unspecified> {
         let encrypted = self.encrypt(data.as_bytes())?;
-        Ok(base64::encode(encrypted))
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        Ok(STANDARD.encode(encrypted))
     }
     
     /// Decrypt base64 string
     pub fn decrypt_string(&self, data: &str) -> Result<String, Unspecified> {
-        let encrypted = base64::decode(data).map_err(|_| Unspecified)?;
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        let encrypted = STANDARD.decode(data).map_err(|_| Unspecified)?;
         let decrypted = self.decrypt(&encrypted)?;
         String::from_utf8(decrypted).map_err(|_| Unspecified)
     }

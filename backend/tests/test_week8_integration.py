@@ -14,9 +14,9 @@ import sys
 import time
 sys.path.insert(0, '/home/ansari/Documents/MiniMe')
 
-from backend.database.postgres import SessionLocal
-from backend.models import Entity, EntityOccurrence, Activity, User
-from backend.services.entity_deduplication import deduplication_service
+from database.postgres import SessionLocal
+from models import Entity, EntityOccurrence, Activity, User
+from services.entity_deduplication import deduplication_service
 from uuid import uuid4, UUID
 from datetime import datetime
 import json
@@ -184,7 +184,7 @@ def test_api_endpoints():
     
     # Import API router
     try:
-        from backend.api.v1.entities import router
+        from api.v1.entities import router
         print("\n✓ Entity API router imported successfully")
         
         # Check endpoints exist
@@ -218,7 +218,7 @@ def test_background_tasks():
     print("=" * 60)
     
     try:
-        from backend.tasks.entity_tasks import (
+        from tasks.entity_tasks import (
             generate_entity_embedding,
             scan_entity_duplicates,
             sync_entity_to_neo4j,

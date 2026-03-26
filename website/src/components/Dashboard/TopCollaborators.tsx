@@ -8,9 +8,9 @@ export function TopCollaborators() {
 
     if (isLoading) {
         return (
-            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold mb-4">Top Collaborators</h3>
-                <div className="space-y-3">
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 h-full flex flex-col">
+                <h3 className="text-lg font-semibold mb-4 flex-shrink-0">Top Collaborators</h3>
+                <div className="space-y-3 flex-1">
                     {[...Array(5)].map((_, i) => (
                         <div key={i} className="bg-gray-100 animate-pulse rounded h-16" />
                     ))}
@@ -21,9 +21,9 @@ export function TopCollaborators() {
 
     if (error || !data || data.top_collaborators.length === 0) {
         return (
-            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold mb-4">Top Collaborators</h3>
-                <div className="bg-gray-50 rounded p-8 text-center">
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 h-full flex flex-col">
+                <h3 className="text-lg font-semibold mb-4 flex-shrink-0">Top Collaborators</h3>
+                <div className="bg-gray-50 rounded p-8 text-center flex-1 flex items-center justify-center flex-col">
                     <p className="text-gray-500">No collaboration data available</p>
                 </div>
             </div>
@@ -31,17 +31,18 @@ export function TopCollaborators() {
     }
 
     return (
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Top Collaborators</h3>
-            <p className="text-sm text-gray-600 mb-4">
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 h-full flex flex-col">
+            <h3 className="text-lg font-semibold mb-1 flex-shrink-0">Top Collaborators</h3>
+            <p className="text-sm text-gray-600 mb-4 flex-shrink-0">
                 People you've worked with most this week
             </p>
 
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 overflow-y-auto pr-2">
                 {data.top_collaborators.slice(0, 10).map((collaborator: Collaborator, index: number) => (
                     <div
                         key={collaborator.email || collaborator.name}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                        onClick={() => collaborator.email && (window.location.href = `mailto:${collaborator.email}`)}
+                        className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors ${collaborator.email ? 'cursor-pointer' : ''}`}
                     >
                         <div className="flex items-center gap-3">
                             {/* Rank badge */}
@@ -88,7 +89,7 @@ export function TopCollaborators() {
             </div>
 
             {data.top_collaborators.length > 10 && (
-                <button className="w-full mt-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <button className="w-full mt-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0">
                     View all {data.top_collaborators.length} collaborators →
                 </button>
             )}

@@ -9,24 +9,28 @@ import { CommunitiesPanel } from '@/components/Dashboard/CommunitiesPanel';
 import { LearningPathsPanel } from '@/components/Dashboard/LearningPathsPanel';
 import { ExpertInsightsPanel } from '@/components/Dashboard/ExpertInsightsPanel';
 import { LinkPredictionPanel } from '@/components/Dashboard/LinkPredictionPanel';
-import { Network, ZoomIn, ZoomOut, Maximize2, Download, Layers, BookOpen, Award, Link2 } from 'lucide-react';
+import { GraphIntelligence } from '@/components/Dashboard/GraphIntelligence';
+import { Network, ZoomIn, ZoomOut, Maximize2, Download, Layers, BookOpen, Award, Link2, Brain } from 'lucide-react';
 import { useGraphData } from '@/lib/hooks/useGraphData';
+import { toast } from 'sonner';
 
-type BottomTab = 'communities' | 'learning' | 'expertise' | 'links';
+type BottomTab = 'communities' | 'learning' | 'expertise' | 'links' | 'intelligence';
 
 const BOTTOM_TABS: { id: BottomTab; label: string; icon: React.ReactNode }[] = [
     { id: 'communities', label: 'Communities', icon: <Layers className="w-4 h-4" /> },
     { id: 'learning', label: 'Learning Paths', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'expertise', label: 'Expert Insights', icon: <Award className="w-4 h-4" /> },
     { id: 'links', label: 'Suggested Links', icon: <Link2 className="w-4 h-4" /> },
+    { id: 'intelligence', label: 'Intelligence', icon: <Brain className="w-4 h-4" /> },
 ];
 
 export default function GraphPage() {
     const [selectedNode, setSelectedNode] = useState<string | null>(null);
     const [selectedNodeData, setSelectedNodeData] = useState<{ id: string; label: string; type: string; size: number } | null>(null);
     const [activeTab, setActiveTab] = useState<BottomTab>('communities');
-    const [filters, setFilters] = useState<{ nodeTypes: string[]; searchQuery: string }>({
+    const [filters, setFilters] = useState<{ nodeTypes: string[]; relationshipTypes: string[]; searchQuery: string }>({
         nodeTypes: [],
+        relationshipTypes: [],
         searchQuery: '',
     });
     const sigmaInstanceRef = useRef<Sigma | null>(null);
@@ -70,6 +74,7 @@ export default function GraphPage() {
         a.download = `minime-knowledge-graph-${new Date().toISOString().slice(0, 10)}.json`;
         a.click();
         URL.revokeObjectURL(url);
+        toast.success('Graph exported as JSON');
     };
 
     return (
@@ -200,6 +205,7 @@ export default function GraphPage() {
                             {activeTab === 'learning' && <LearningPathsPanel />}
                             {activeTab === 'expertise' && <ExpertInsightsPanel />}
                             {activeTab === 'links' && <LinkPredictionPanel />}
+                            {activeTab === 'intelligence' && <GraphIntelligence />}
                         </div>
                     </div>
                 </div>

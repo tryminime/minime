@@ -13,7 +13,7 @@ import sys
 import time
 sys.path.insert(0, '/home/ansari/Documents/MiniMe')
 
-from backend.services.embedding_service import embedding_service
+from services.embedding_service import embedding_service
 
 
 def test_single_embedding():

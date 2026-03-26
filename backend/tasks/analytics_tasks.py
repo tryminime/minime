@@ -33,8 +33,8 @@ def compute_daily_metrics_task(self, user_id: str, target_date_str: str):
         user_id: User UUID
         target_date_str: Date in ISO format (YYYY-MM-DD)
     """
-    from backend.database.postgres import async_session_factory
-    from backend.services.productivity_metrics_service import ProductivityMetricsService
+    from database.postgres import async_session_factory
+    from services.productivity_metrics_service import ProductivityMetricsService
     import asyncio
     
     target_date = date.fromisoformat(target_date_str)
@@ -113,9 +113,9 @@ def generate_daily_summary_task(self, user_id: str, target_date_str: str):
         user_id: User UUID
         target_date_str: Date in ISO format
     """
-    from backend.database.postgres import async_session_factory
-    from backend.services.daily_summary_service import DailySummaryService
-    from backend.services.productivity_metrics_service import ProductivityMetricsService
+    from database.postgres import async_session_factory
+    from services.daily_summary_service import DailySummaryService
+    from services.productivity_metrics_service import ProductivityMetricsService
     import asyncio
     
     target_date = date.fromisoformat(target_date_str)
@@ -158,7 +158,7 @@ def generate_daily_summary_task(self, user_id: str, target_date_str: str):
         result = loop.run_until_complete(run())
         return result
         
-   except Exception as exc:
+    except Exception as exc:
         logger.error(
             "Failed to generate daily summary",
             user_id=user_id,
@@ -184,10 +184,10 @@ def send_daily_summary_email_task(self, user_id: str, target_date_str: str):
         user_id: User UUID
         target_date_str: Date in ISO format
     """
-    from backend.database.postgres import async_session_factory
-    from backend.services.daily_summary_service import DailySummaryService
-    from backend.services.productivity_metrics_service import ProductivityMetricsService
-    from backend.models.analytics_models import AnalyticsEmail
+    from database.postgres import async_session_factory
+    from services.daily_summary_service import DailySummaryService
+    from services.productivity_metrics_service import ProductivityMetricsService
+    from models.analytics_models import AnalyticsEmail
     from jinja2 import Template
     import asyncio
     
@@ -308,9 +308,9 @@ def schedule_daily_metrics():
     
     Runs at 08:30 UTC daily.
     """
-    from backend.database.postgres import async_session_factory
+    from database.postgres import async_session_factory
     from sqlalchemy import select
-    from backend.models import User  # Assuming User model exists
+    from models import User  # Assuming User model exists
     import asyncio
     
     logger.info("Scheduling daily metrics computation for all users")
@@ -349,9 +349,9 @@ def schedule_daily_summaries():
     
     Runs at 08:45 UTC daily.
     """
-    from backend.database.postgres import async_session_factory
+    from database.postgres import async_session_factory
     from sqlalchemy import select
-    from backend.models import User
+    from models import User
     import asyncio
     
     logger.info("Scheduling daily summary generation for all users")
@@ -389,9 +389,9 @@ def schedule_daily_emails():
     
     Runs at 09:00 UTC daily.
     """
-    from backend.database.postgres import async_session_factory
+    from database.postgres import async_session_factory
     from sqlalchemy import select
-    from backend.models import User
+    from models import User
     import asyncio
     
     logger.info("Scheduling daily emails for all users")
@@ -442,11 +442,11 @@ def generate_weekly_report_task(self, user_id: str, week_start_str: str):
         user_id: User UUID
         week_start_str: Monday date in ISO format (YYYY-MM-DD)
     """
-    from backend.database.postgres import async_session_factory
-    from backend.services.weekly_report_service import WeeklyReportService
-    from backend.services.productivity_metrics_service import ProductivityMetricsService
-    from backend.services.collaboration_analytics_service import CollaborationAnalyticsService
-    from backend.services.skill_analytics_service import SkillAnalyticsService
+    from database.postgres import async_session_factory
+    from services.weekly_report_service import WeeklyReportService
+    from services.productivity_metrics_service import ProductivityMetricsService
+    from services.collaboration_analytics_service import CollaborationAnalyticsService
+    from services.skill_analytics_service import SkillAnalyticsService
     import asyncio
     
     week_start = date.fromisoformat(week_start_str)
@@ -520,10 +520,10 @@ def send_weekly_report_email_task(self, user_id: str, week_start_str: str):
         user_id: User UUID
         week_start_str: Monday date in ISO format
     """
-    from backend.database.postgres import async_session_factory
-    from backend.services.weekly_report_service import WeeklyReportService
-    from backend.services.productivity_metrics_service import ProductivityMetricsService
-    from backend.models.analytics_models import AnalyticsEmail
+    from database.postgres import async_session_factory
+    from services.weekly_report_service import WeeklyReportService
+    from services.productivity_metrics_service import ProductivityMetricsService
+    from models.analytics_models import AnalyticsEmail
     from jinja2 import Template
     import asyncio
     
@@ -644,9 +644,9 @@ def schedule_weekly_reports():
     
     Runs every Monday at 09:00 UTC.
     """
-    from backend.database.postgres import async_session_factory
+    from database.postgres import async_session_factory
     from sqlalchemy import select
-    from backend.models import User
+    from models import User
     import asyncio
     
     logger.info("Scheduling weekly reports for all users")
@@ -687,9 +687,9 @@ def schedule_weekly_emails():
     
     Runs every Monday at 09:30 UTC.
     """
-    from backend.database.postgres import async_session_factory
+    from database.postgres import async_session_factory
     from sqlalchemy import select
-    from backend.models import User
+    from models import User
     import asyncio
     
     logger.info("Scheduling weekly emails for all users")

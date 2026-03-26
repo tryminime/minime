@@ -18,14 +18,39 @@ export interface SocialMediaStats {
     daily_minutes: { date: string; minutes: number }[];
 }
 
+const SOCIAL_DOMAINS = [
+    'twitter.com', 'x.com', 'facebook.com', 'fb.com', 'instagram.com',
+    'reddit.com', 'linkedin.com', 'youtube.com', 'tiktok.com',
+    'discord.com', 'slack.com', 'whatsapp.com', 'web.whatsapp.com',
+    'mastodon.social', 'threads.net', 'bsky.app', 'snapchat.com',
+    'pinterest.com', 'tumblr.com',
+];
+
+function isSocialDomain(domain: string | null): boolean {
+    if (!domain) return false;
+    const d = domain.replace(/^www\./, '').toLowerCase();
+    return SOCIAL_DOMAINS.some(s => d === s || d.endsWith('.' + s));
+}
+
 export function useSocialMedia() {
     const api = getAPIClient();
 
     return useQuery({
         queryKey: ['activities', 'social-media'],
         queryFn: async () => {
-            const data = await api.get<{ activities: ActivityItem[] }>('/api/v1/activities?type=social_media&limit=500');
-            const activities = data.activities || [];
+            // Fetch social_media (desktop tracker), web_visit, and page_view (browser extension)
+            const [socialMedia, webVisit, pageView] = await Promise.all([
+                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=social_media&limit=500').catch(() => ({ activities: [] })),
+                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=web_visit&limit=500').catch(() => ({ activities: [] })),
+                api.get<{ activities: ActivityItem[] }>('/api/v1/activities/?type=page_view&limit=500').catch(() => ({ activities: [] })),
+            ]);
+            const allActivities = [
+                ...(socialMedia.activities || []),
+                ...(webVisit.activities || []),
+                ...(pageView.activities || []),
+            ];
+            // social_media type activities are already social; web_visit/page_view need domain filtering
+            const activities = allActivities.filter(a => a.type === 'social_media' || isSocialDomain(a.domain));
 
             // Group by domain/app
             const platformMap: Record<string, { time: number; count: number; domain: string }> = {};
@@ -69,7 +94,8 @@ export function useSocialMedia() {
 
             return result;
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: 60 * 1000,
+        refetchInterval: 60 * 1000,
         retry: 2,
     });
 }

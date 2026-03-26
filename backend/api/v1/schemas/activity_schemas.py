@@ -20,6 +20,10 @@ class ActivityType(str, Enum):
     CUSTOM = "custom"
     WINDOW_FOCUS = "window_focus"
     WEB_VISIT = "web_visit"
+    SOCIAL_MEDIA = "social_media"
+    VIDEO_WATCH = "video_watch"
+    SEARCH_QUERY = "search_query"
+    READING_ANALYTICS = "reading_analytics"
 
 
 class ActivitySource(str, Enum):

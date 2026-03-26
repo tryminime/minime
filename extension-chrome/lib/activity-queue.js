@@ -81,8 +81,10 @@ export class ActivityQueue {
             this.config.flushInterval
         );
 
-        // Listen for network changes
-        window.addEventListener('online', () => this.onNetworkOnline());
+        // Listen for network changes (use 'self' — works in both SW and page context)
+        if (typeof self !== 'undefined' && self.addEventListener) {
+            self.addEventListener('online', () => this.onNetworkOnline());
+        }
 
         this.isRunning = true;
         this.log('Queue started');

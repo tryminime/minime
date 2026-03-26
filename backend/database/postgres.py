@@ -7,7 +7,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool
 import structlog
 
-from backend.config import settings
+from config import settings
 
 logger = structlog.get_logger()
 

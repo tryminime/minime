@@ -5,6 +5,14 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InputMetricsSnapshot {
+    pub keystrokes_per_minute: f64,
+    pub mouse_distance_px: f64,
+    pub mouse_click_count: u32,
+    pub activity_level: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActivityEvent {
     pub id: String,
     pub timestamp: DateTime<Utc>,
@@ -15,6 +23,9 @@ pub struct ActivityEvent {
     pub duration_seconds: Option<i64>,
     pub is_idle: bool,
     pub device_id: String,
+    /// Aggregate input metrics snapshot at the time of this event
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_metrics: Option<InputMetricsSnapshot>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,6 +36,7 @@ pub enum ActivityType {
     Idle,
     Break,
     FocusPeriod,
+    ReadingAnalytics,
 }
 
 /// Platform-agnostic activity tracker interface
@@ -61,6 +73,7 @@ impl ActivityEvent {
             duration_seconds: None,
             is_idle: false,
             device_id,
+            input_metrics: None,
         }
     }
     
@@ -112,6 +125,7 @@ impl ActivityManager {
                     duration_seconds: None,
                     is_idle: true,
                     device_id: self.device_id.clone(),
+                    input_metrics: None,
                 };
                 self.current_activity = Some(activity.clone());
                 return Some(activity);

@@ -12,11 +12,16 @@ import time
 import hashlib
 import pickle
 
-from karateclub import Node2Vec
+try:
+    from karateclub import Node2Vec
+    _KARATECLUB_AVAILABLE = True
+except ImportError:
+    _KARATECLUB_AVAILABLE = False
+    Node2Vec = None
 from prometheus_client import Counter, Histogram, Gauge
 
-from backend.config.neo4j_config import get_neo4j_session
-from backend.config.settings import settings
+from config.neo4j_config import get_neo4j_session
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 

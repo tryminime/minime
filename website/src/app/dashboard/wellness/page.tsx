@@ -2,11 +2,8 @@
 
 import { Heart, AlertTriangle, CheckCircle, Coffee, TrendingDown, TrendingUp, Minus, MessageSquare } from 'lucide-react';
 import { useWellness } from '@/lib/hooks/useGoals';
-import { useQuery } from '@tanstack/react-query';
-import { getAPIClient } from '@/lib/api';
+import { FocusScoreTrend } from '@/components/Dashboard/FocusScoreTrend';
 import Link from 'next/link';
-
-interface DailyMetric { date: string; focus_score: number; productivity_score: number; }
 
 function ScoreRing({ score, color, size = 120 }: { score: number; color: string; size?: number }) {
     const radius = (size - 16) / 2;
@@ -28,13 +25,6 @@ function ScoreRing({ score, color, size = 120 }: { score: number; color: string;
 
 export default function WellnessPage() {
     const { data: wellness, isLoading } = useWellness();
-
-    const api = getAPIClient();
-    const { data: weeklyData } = useQuery({
-        queryKey: ['productivity', 'weekly'],
-        queryFn: () => api.get<{ daily_metrics: DailyMetric[] }>('/api/v1/analytics/productivity/weekly'),
-        staleTime: 5 * 60 * 1000,
-    });
 
     if (isLoading) {
         return (
@@ -76,7 +66,7 @@ export default function WellnessPage() {
     const burnoutColors: Record<string, string> = { low: 'text-emerald-700 bg-emerald-100', medium: 'text-amber-700 bg-amber-100', high: 'text-red-700 bg-red-100' };
     const ringColor = score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444';
 
-    const weekDays = weeklyData?.daily_metrics ?? [];
+
 
     return (
         <div className="space-y-6 max-w-5xl">
@@ -201,37 +191,32 @@ export default function WellnessPage() {
                 </div>
             </div>
 
-            {/* Weekly Break Trend */}
-            {weekDays.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                    <h3 className="font-semibold text-gray-900 mb-4">7-Day Focus Trend</h3>
-                    <div className="flex items-end gap-2 h-24">
-                        {weekDays.map((day, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                                <div
-                                    className="w-full rounded-t-sm bg-indigo-400 transition-all"
-                                    style={{ height: `${Math.max(4, (day.focus_score / 100) * 80)}px` }}
-                                    title={`Focus: ${day.focus_score.toFixed(0)}%`}
-                                />
-                                <span className="text-xs text-gray-400">
-                                    {new Date(day.date).toLocaleDateString('en', { weekday: 'short' }).slice(0, 1)}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+            {/* Focus Trend with Range Dropdown */}
+            <FocusScoreTrend />
 
-            {/* Tips */}
-            <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
-                <h3 className="font-semibold text-rose-900 mb-2">💡 Wellness Tips</h3>
-                <ul className="text-sm text-rose-800 space-y-1">
-                    <li>• Take a 5-min break every 90 minutes of focused work</li>
-                    <li>• Keep your work-life balance score above 60 for sustainable performance</li>
-                    <li>• Avoid sessions longer than 2 hours without a break to prevent burnout</li>
-                    <li>• Wednesday and Thursday afternoons tend to be highest-energy windows</li>
-                </ul>
-            </div>
+            {/* Dynamic Tips */}
+            {(() => {
+                const tips: string[] = [];
+                const balScore = (balance as { score?: number }).score ?? 0;
+                const breaks = (rest as { break_count?: number }).break_count ?? 0;
+                if (burnoutLevel === 'high') tips.push('⚠️ High burnout risk detected — take a 10-min break every 60 minutes and avoid sessions over 2 hours');
+                else if (burnoutLevel === 'medium') tips.push('Moderate burnout risk — consider scheduling short breaks between long focus sessions');
+                else tips.push('✅ Low burnout risk — keep up the great work-life habits!');
+                if (balScore < 30) tips.push(`Work-life balance is ${balScore}/100 — try to increase break frequency (currently ${((balance as { break_ratio?: number }).break_ratio ?? 0) * 100 < 10 ? 'well below' : 'below'} the 20% target)`);
+                else if (balScore >= 70) tips.push('Strong work-life balance — your break habits are sustainable');
+                if (breaks < 10) tips.push(`Only ${breaks} breaks this week — aim for at least 3-4 breaks per work day`);
+                else tips.push(`${breaks} breaks this week — good recovery pattern`);
+                if (score < 40) tips.push('Your wellness score suggests you may be overworking — consider shorter sessions and more frequent rest');
+                tips.push('Wednesday and Thursday afternoons tend to be highest-energy windows');
+                return (
+                    <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
+                        <h3 className="font-semibold text-rose-900 mb-2">💡 Wellness Tips</h3>
+                        <ul className="text-sm text-rose-800 space-y-1">
+                            {tips.map((tip, i) => <li key={i}>• {tip}</li>)}
+                        </ul>
+                    </div>
+                );
+            })()}
         </div>
     );
 }

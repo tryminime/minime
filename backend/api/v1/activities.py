@@ -14,9 +14,10 @@ from uuid import UUID
 import uuid
 import structlog
 
-from backend.database.postgres import get_db
-from backend.models import Activity
-from backend.auth.jwt_handler import get_current_user as get_current_user_from_token
+from database.postgres import get_db
+from models import Activity
+from auth.jwt_handler import get_current_user as get_current_user_from_token
+from websocket.manager import notify_activity_created
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -47,6 +48,8 @@ class ActivityResponse(BaseModel):
     domain: Optional[str]
     duration_seconds: Optional[int]
     created_at: str
+    data: Optional[dict] = None
+    context: Optional[dict] = None
 
 
 class ActivityBatchSync(BaseModel):
@@ -70,10 +73,26 @@ async def create_activity(
     user_id = UUID(current_user["id"]) if isinstance(current_user, dict) else current_user.id
     
     now = datetime.utcnow()
+    # Normalize activity types
+    TYPE_MAP = {"page_view": "web_visit", "tab_focus": "web_visit",
+                 "window_focus": "app_focus", "reading_analytics": "reading_analytics"}
+    normalized_type = TYPE_MAP.get(activity.type, activity.type)
+
+    # Build context — merge client data into context alongside backward-compatible fields
+    base_context = {
+        "app_name": activity.app,
+        "title": activity.title,
+        "domain": activity.domain,
+        "url": activity.url,
+    }
+    # Merge any reading/enrichment data from the data field
+    if activity.data:
+        base_context.update(activity.data)
+
     new_activity = Activity(
         id=uuid.uuid4(),
         user_id=user_id,
-        type=activity.type,
+        type=normalized_type,
         source=activity.source or "api",
         app=activity.app,
         title=activity.title,
@@ -81,12 +100,7 @@ async def create_activity(
         url=activity.url,
         duration_seconds=activity.duration_seconds,
         data=activity.data or {},
-        context={
-            "app_name": activity.app,
-            "title": activity.title,
-            "domain": activity.domain,
-            "url": activity.url,
-        },
+        context=base_context,
         ingestion_metadata={"source": "api", "received_at": now.isoformat()},
         occurred_at=now,
         received_at=now,
@@ -98,6 +112,15 @@ async def create_activity(
     
     logger.info("Activity created", activity_id=str(new_activity.id), type=activity.type, user_id=str(user_id))
     
+    # Push real-time WebSocket notification
+    try:
+        await notify_activity_created(str(user_id), {
+            "activity_id": str(new_activity.id),
+            "type": activity.type,
+        })
+    except Exception:
+        pass  # Non-critical — dashboard will still poll
+    
     return ActivityResponse(
         id=str(new_activity.id),
         type=new_activity.type,
@@ -106,7 +129,8 @@ async def create_activity(
         title=new_activity.title,
         domain=new_activity.domain,
         duration_seconds=new_activity.duration_seconds,
-        created_at=new_activity.created_at.isoformat() if new_activity.created_at else now.isoformat()
+        created_at=new_activity.created_at.isoformat() if new_activity.created_at else now.isoformat(),
+        context=new_activity.context,
     )
 
 
@@ -162,7 +186,9 @@ async def list_activities(
                 title=a.title,
                 domain=a.domain,
                 duration_seconds=a.duration_seconds,
-                created_at=a.created_at.isoformat() if a.created_at else ""
+                created_at=a.created_at.isoformat() if a.created_at else "",
+                data=a.data,
+                context=a.context,
             )
             for a in activities
         ],
@@ -213,7 +239,9 @@ async def get_activity(
         title=activity.title,
         domain=activity.domain,
         duration_seconds=activity.duration_seconds,
-        created_at=activity.created_at.isoformat() if activity.created_at else ""
+        created_at=activity.created_at.isoformat() if activity.created_at else "",
+        data=activity.data,
+        context=activity.context,
     )
 
 
@@ -233,6 +261,16 @@ async def sync_activities(
     created_ids = []
     
     for act in batch.activities:
+        # Build context — merge client data into context alongside backward-compatible fields
+        base_context = {
+            "app_name": act.app,
+            "title": act.title,
+            "domain": act.domain,
+            "url": act.url,
+        }
+        if act.data:
+            base_context.update(act.data)
+
         new_activity = Activity(
             id=uuid.uuid4(),
             user_id=user_id,
@@ -244,12 +282,7 @@ async def sync_activities(
             url=act.url,
             duration_seconds=act.duration_seconds,
             data=act.data or {},
-            context={
-                "app_name": act.app,
-                "title": act.title,
-                "domain": act.domain,
-                "url": act.url,
-            },
+            context=base_context,
             ingestion_metadata={"source": "sync", "received_at": now.isoformat()},
             occurred_at=now,
             received_at=now,
@@ -261,12 +294,62 @@ async def sync_activities(
     
     logger.info("Activities synced", count=len(created_ids), user_id=str(user_id))
     
+    # Push real-time WebSocket notification
+    try:
+        await notify_activity_created(str(user_id), {
+            "count": len(created_ids),
+            "source": "sync",
+        })
+    except Exception:
+        pass  # Non-critical
+    
     return {
         "synced": len(created_ids),
         "failed": 0,
         "activity_ids": created_ids,
         "message": f"Successfully synced {len(created_ids)} activities"
     }
+
+
+@router.post("/bulk-delete")
+async def bulk_delete_activities(
+    body: dict,
+    current_user=Depends(get_current_user_from_token),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Bulk delete activities by list of IDs (for privacy/GDPR compliance).
+    Body: { "activity_ids": ["uuid1", "uuid2", ...] }
+    """
+    user_id = UUID(current_user["id"]) if isinstance(current_user, dict) else current_user.id
+    activity_ids = body.get("activity_ids", [])
+    
+    if not activity_ids or len(activity_ids) > 500:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide 1-500 activity IDs"
+        )
+    
+    try:
+        uuids = [UUID(aid) for aid in activity_ids]
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid activity ID format"
+        )
+    
+    from sqlalchemy import delete as sa_delete
+    stmt = sa_delete(Activity).where(
+        Activity.id.in_(uuids),
+        Activity.user_id == user_id
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    
+    deleted_count = result.rowcount
+    logger.info("Bulk delete activities", count=deleted_count, user_id=str(user_id))
+    
+    return {"message": f"Deleted {deleted_count} activities", "deleted_count": deleted_count}
 
 
 @router.delete("/{activity_id}")

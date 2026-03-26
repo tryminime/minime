@@ -10,7 +10,7 @@ import time
 
 from prometheus_client import Counter, Histogram, Gauge
 
-from backend.config.neo4j_config import get_neo4j_session, get_neo4j_driver
+from config.neo4j_config import get_neo4j_session, get_neo4j_driver
 
 logger = logging.getLogger(__name__)
 

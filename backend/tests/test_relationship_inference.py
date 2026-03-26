@@ -7,12 +7,12 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
-from backend.services.relationship_inference import (
+from services.relationship_inference import (
     RelationshipInferenceService,
     ENTITY_PAIR_TO_RELATIONSHIP,
     relationship_inference_service
 )
-from backend.models.graph_models import NodeType, RelationshipType
+from models.graph_models import NodeType, RelationshipType
 
 
 class TestRelationshipInferenceService:

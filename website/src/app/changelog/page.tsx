@@ -31,15 +31,15 @@ export default function ChangelogPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-bg-base">
             <MarketingNav />
 
             <main className="pt-40 pb-32">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
                     <div className="mb-20">
-                        <h1 className="text-5xl font-extrabold text-gray-900 tracking-tight mb-4">Changelog</h1>
-                        <p className="text-xl text-gray-600">New updates and improvements to MiniMe.</p>
+                        <h1 className="text-5xl font-extrabold text-text-primary tracking-tight mb-4">Changelog</h1>
+                        <p className="text-xl text-text-secondary">New updates and improvements to MiniMe.</p>
                     </div>
 
                     <div className="space-y-24 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
@@ -52,18 +52,18 @@ export default function ChangelogPage() {
 
                                 {/* Content */}
                                 <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] ml-auto md:ml-0">
-                                    <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm group-hover:shadow-md group-hover:border-indigo-100 transition-all">
+                                    <div className="bg-bg-base p-8 rounded-3xl border border-border/50 shadow-sm group-hover:shadow-md group-hover:border-indigo-100 transition-all">
 
                                         <div className="flex flex-wrap items-center gap-2 mb-4">
                                             <span className="px-3 py-1 bg-gray-900 text-white text-sm font-bold rounded-lg">{release.version}</span>
-                                            <span className="text-sm font-medium text-gray-500">{release.date}</span>
+                                            <span className="text-sm font-medium text-text-muted">{release.date}</span>
                                         </div>
 
-                                        <h2 className="text-2xl font-bold text-gray-900 mb-6">{release.title}</h2>
+                                        <h2 className="text-2xl font-bold text-text-primary mb-6">{release.title}</h2>
 
                                         <ul className="space-y-3">
                                             {release.points.map((point, i) => (
-                                                <li key={i} className="flex gap-3 text-gray-600">
+                                                <li key={i} className="flex gap-3 text-text-secondary">
                                                     <span className="text-indigo-500 shrink-0 mt-1.5">•</span>
                                                     <span>{point}</span>
                                                 </li>

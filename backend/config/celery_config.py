@@ -8,7 +8,7 @@ This module sets up the Celery application for asynchronous task processing:
 """
 
 from celery import Celery
-from backend.config import settings
+from config import settings
 import structlog
 
 logger = structlog.get_logger()

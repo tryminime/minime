@@ -8,8 +8,8 @@ import uuid
 from unittest.mock import Mock, patch, MagicMock
 from neo4j.exceptions import ServiceUnavailable, TransientError, DatabaseError
 
-from backend.services.graph_ingestion import GraphIngestionService, retry_on_transient_error
-from backend.models.graph_models import (
+from services.graph_ingestion import GraphIngestionService, retry_on_transient_error
+from models.graph_models import (
     NodeType,
     RelationshipType,
     GraphNodeCreate,

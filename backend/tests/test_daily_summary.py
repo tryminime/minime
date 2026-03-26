@@ -15,8 +15,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch, mock_open
 
-from backend.services.daily_summary_service import DailySummaryService
-from backend.models.analytics_models import DailyMetrics, DailySummary
+from services.daily_summary_service import DailySummaryService
+from models.analytics_models import DailyMetrics, DailySummary
 
 
 class TestDailySummaryService:

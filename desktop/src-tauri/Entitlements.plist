@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS App Sandbox entitlements for MiniMe desktop app.
+
+  IMPORTANT: These entitlements are required for:
+    1. Mac App Store distribution (sandbox is mandatory)
+    2. Notarization (some permissions required regardless)
+
+  Reference: https://developer.apple.com/documentation/bundleresources/entitlements
+-->
+<plist version="1.0">
+<dict>
+    <!-- App Sandbox — required for Mac App Store -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+
+    <!-- Network access (to reach local backend at localhost:8000) -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+
+    <!-- File access: user-selected files (document upload) -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+
+    <!-- File access: downloads folder (for exports) -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+
+    <!--
+      Accessibility API — needed for window title tracking.
+      NOTE: This requires a special entitlement from Apple.
+      Submit a request at: https://developer.apple.com/contact/request/security-entitlement-extension-and-accessibility
+      Until approved, distribute OUTSIDE the App Store.
+    -->
+    <!-- <key>com.apple.security.temporary-exception.apple-events</key>
+    <string>com.apple.systemevents</string> -->
+
+    <!-- WebKit process — used by Tauri's web view -->
+    <key>com.apple.security.inherit</key>
+    <true/>
+
+    <!-- JIT (JavaScript execution in WebKit) -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- Allow unsigned libraries loaded at runtime (Tauri) -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- Disable library validation (required for some Tauri plugins) -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

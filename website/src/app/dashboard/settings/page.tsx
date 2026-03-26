@@ -9,7 +9,7 @@ import {
     Cpu, Zap, BookOpen, CheckCircle, Loader2, Eye, EyeOff, ChevronRight,
     ExternalLink, AlertCircle, CreditCard, Crown, TrendingUp, Mail, Camera,
     Settings2, KeyRound, LogOut, Activity, Monitor,
-
+    Cloud, Lock, RefreshCcw, HardDrive, UploadCloud, Upload,
 } from 'lucide-react';
 import { useModelInfo, useAvailableModels, useSetModel } from '@/lib/hooks/useAIChat';
 import { getAPIClient } from '@/lib/api';
@@ -23,8 +23,21 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useSubscription, useUsageMetrics, useCreateCheckout, useCancelSubscription } from '@/lib/hooks/useBilling';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import {
+    useCloudSyncStatus,
+    useGDriveConnect, useGDriveDisconnect,
+    useOneDriveConnect, useOneDriveDisconnect,
+    useBackupNow, useRestoreFromCloud,
+    type ProviderStatus,
+} from '@/lib/hooks/useCloudSync';
+import {
+    useSyncSchedule, useUpdateSchedule,
+    useTriggerSync, useSyncHistory,
+    useRestoreFromCloud as useRestoreFromCloudSync,
+} from '@/lib/hooks/useCloudSyncSchedule';
+import { useExportDownload, useExportUpload } from '@/lib/hooks/useExport';
 
-type Tab = 'profile' | 'subscription' | 'privacy' | 'notifications' | 'integrations' | 'data' | 'ai' | 'desktop';
+type Tab = 'profile' | 'privacy' | 'notifications' | 'integrations' | 'data' | 'ai' | 'desktop' | 'sync';
 
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
@@ -126,30 +139,7 @@ function IntegrationCard({ name, desc, provider }: IntegrationCardProps) {
     );
 }
 
-function ComingSoonCard({ name, desc }: { name: string; desc: string }) {
-    return (
-        <div
-            className="flex items-center justify-between p-4 rounded-xl opacity-60"
-            style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
-        >
-            <div className="flex items-center gap-3">
-                <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
-                    style={{ background: 'var(--color-border)', color: 'var(--color-muted)' }}
-                >
-                    {name[0]}
-                </div>
-                <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>{name}</p>
-                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{desc}</p>
-                </div>
-            </div>
-            <span className="px-3 py-1 text-xs font-medium rounded-full" style={{ background: 'var(--color-border)', color: 'var(--color-muted)' }}>
-                Coming Soon
-            </span>
-        </div>
-    );
-}
+// ComingSoonCard component removed 
 
 // ── Usage Bar ─────────────────────────────────────────────────────────────────
 
@@ -343,6 +333,11 @@ export default function SettingsPage() {
         weeklyDigest: true,
         productivityAlerts: true,
         dndEnabled: false,
+        quietHoursStart: '22:00',
+        quietHoursEnd: '08:00',
+        milestoneAlerts: true,
+        focusReminders: true,
+        digestFrequency: 'weekly' as 'daily' | 'weekly' | 'monthly',
     });
 
     useEffect(() => {
@@ -354,12 +349,16 @@ export default function SettingsPage() {
                 weeklyDigest: (p.weekly_digest as boolean) ?? prev.weeklyDigest,
                 productivityAlerts: (p.productivity_alerts as boolean) ?? prev.productivityAlerts,
                 dndEnabled: (p.dnd_enabled as boolean) ?? prev.dndEnabled,
+                quietHoursStart: (p.quiet_hours_start as string) ?? prev.quietHoursStart,
+                quietHoursEnd: (p.quiet_hours_end as string) ?? prev.quietHoursEnd,
+                milestoneAlerts: (p.milestone_alerts as boolean) ?? prev.milestoneAlerts,
+                focusReminders: (p.focus_reminders as boolean) ?? prev.focusReminders,
+                digestFrequency: (p.digest_frequency as 'daily' | 'weekly' | 'monthly') ?? prev.digestFrequency,
             }));
         }
     }, [prefsData]);
 
-    // ── Auto-backup local state ───────────────────────────────────────────────
-    const [autoBackup, setAutoBackup] = useState(true);
+
 
     // ── Desktop: detect Tauri + manage autostart ──────────────────────────
     const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -420,29 +419,36 @@ export default function SettingsPage() {
     const handleExportData = async () => {
         setExporting(true);
         try {
-            const data = await api.get('/api/v1/users/me/export-data');
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            // GDPR Art. 20 — full data export via new /api/v1/account/export
+            const token = localStorage.getItem('access_token') || '';
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/account/export`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!res.ok) throw new Error(await res.text());
+            const blob = await res.blob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = 'minime_export.json'; a.click();
+            a.href = url; a.download = 'minime-personal-data-export.json'; a.click();
             URL.revokeObjectURL(url);
-            toast.success('Data exported successfully');
+            toast.success('Personal data exported (GDPR Art. 20)');
         } catch { toast.error('Export failed'); }
         setExporting(false);
     };
 
     const handleDeleteData = async () => {
         try {
-            const res = await api.delete<{ deleted_count: number }>('/api/v1/users/me/data');
-            toast.success(`Deleted ${res.deleted_count} activities`);
+            const res = await api.delete<{ deleted_count: number; message: string; breakdown: Record<string, any> }>('/api/v1/users/me/data');
+            toast.success(res.message || `Deleted ${res.deleted_count} records`);
             setShowDeleteDataModal(false); setDeleteConfirmText('');
         } catch { toast.error('Failed to delete data'); }
     };
 
     const handleDeleteAccount = async () => {
         try {
-            await api.delete('/api/v1/users/me/account');
-            toast.success('Account deleted');
+            // GDPR Art. 17 — right to erasure via new /api/v1/account
+            await api.delete('/api/v1/account');
+            toast.success('Account and all data permanently deleted');
             setShowDeleteAccountModal(false);
             router.push('/auth/login');
         } catch { toast.error('Failed to delete account'); }
@@ -485,6 +491,11 @@ export default function SettingsPage() {
                 weekly_digest: notifs.weeklyDigest,
                 productivity_alerts: notifs.productivityAlerts,
                 dnd_enabled: notifs.dndEnabled,
+                quiet_hours_start: notifs.quietHoursStart,
+                quiet_hours_end: notifs.quietHoursEnd,
+                milestone_alerts: notifs.milestoneAlerts,
+                focus_reminders: notifs.focusReminders,
+                digest_frequency: notifs.digestFrequency,
             },
         }),
     });
@@ -496,6 +507,7 @@ export default function SettingsPage() {
             if (activeTab === 'privacy') await savePrivacy.mutateAsync();
             if (activeTab === 'notifications') await saveNotifications.mutateAsync();
             setSaved(true);
+            toast.success('Settings saved successfully', { style: { padding: '16px', fontSize: '15px' } });
             setTimeout(() => setSaved(false), 2000);
         } catch {
             setSaveError('Failed to save. Please try again.');
@@ -505,11 +517,10 @@ export default function SettingsPage() {
     // ── Tab definitions ───────────────────────────────────────────────────────
     const tabs = [
         { id: 'profile' as Tab, label: 'Profile', icon: User },
-        { id: 'subscription' as Tab, label: 'Subscription', icon: CreditCard },
         { id: 'privacy' as Tab, label: 'Privacy', icon: Shield },
         { id: 'notifications' as Tab, label: 'Notifications', icon: Bell },
         { id: 'integrations' as Tab, label: 'Integrations', icon: Plug },
-        { id: 'data' as Tab, label: 'Data & Backup', icon: Database },
+        { id: 'sync' as Tab, label: 'Data & Sync', icon: Cloud },
         { id: 'ai' as Tab, label: 'AI & LLM', icon: Sparkles },
         { id: 'desktop' as Tab, label: 'Desktop App', icon: Monitor },
     ];
@@ -525,11 +536,9 @@ export default function SettingsPage() {
             />
 
             {/* ── Quick Stats Row ──────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3">
                 {[
                     { label: 'Plan', value: planType === 'pro' ? 'Pro' : planType === 'enterprise' ? 'Enterprise' : 'Free', icon: Crown, color: '#6366f1' },
-                    { label: 'Activities', value: usage?.usage?.activities_count?.toLocaleString() || '0', icon: Activity, color: '#3b82f6' },
-                    { label: 'Graph Nodes', value: usage?.usage?.graph_nodes_count?.toLocaleString() || '0', icon: TrendingUp, color: '#8b5cf6' },
                     { label: 'Status', value: subscription?.status === 'active' ? 'Active' : 'Inactive', icon: CheckCircle, color: '#10b981' },
                 ].map((stat) => (
                     <div
@@ -669,132 +678,6 @@ export default function SettingsPage() {
                         </div>
                     )}
 
-                    {/* ── Subscription ────────────────────────────────────── */}
-                    {activeTab === 'subscription' && (
-                        <div className="space-y-6">
-                            <div>
-                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>Subscription & Billing</h3>
-                                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Manage your plan, usage, and billing details</p>
-                            </div>
-
-                            {/* Current Plan Card */}
-                            <div
-                                className="rounded-xl p-5"
-                                style={{
-                                    background: planType === 'pro'
-                                        ? 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08))'
-                                        : planType === 'enterprise'
-                                            ? 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(217,70,239,0.08))'
-                                            : 'var(--color-shell)',
-                                    border: `1px solid ${planType !== 'free' ? 'rgba(99,102,241,0.2)' : 'var(--color-border)'}`,
-                                }}
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="w-12 h-12 rounded-xl flex items-center justify-center"
-                                            style={{ background: 'rgba(99,102,241,0.1)' }}
-                                        >
-                                            <Crown className="w-6 h-6" style={{ color: '#6366f1' }} />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-lg" style={{ color: 'var(--color-primary)' }}>
-                                                {planType === 'pro' ? 'Pro Plan' : planType === 'enterprise' ? 'Enterprise Plan' : 'Free Plan'}
-                                            </h4>
-                                            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                                                {planType === 'pro' ? '$19/month' : planType === 'enterprise' ? '$99/month' : '$0/month'}
-                                                {' · '}
-                                                {subscription?.status === 'active' ? '✓ Active' : 'Inactive'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <a
-                                            href="/dashboard/billing"
-                                            className="px-4 py-2 text-xs font-medium rounded-xl transition-all hover:opacity-80"
-                                            style={{ background: 'var(--color-accent)', color: '#fff' }}
-                                        >
-                                            Manage Plan →
-                                        </a>
-                                        {planType === 'free' && (
-                                            <button
-                                                onClick={() => handleUpgrade('pro')}
-                                                disabled={createCheckout.isPending}
-                                                className="px-4 py-2 text-xs font-medium rounded-xl transition-all hover:opacity-80 flex items-center gap-1"
-                                                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff' }}
-                                            >
-                                                {createCheckout.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Crown className="w-3 h-3" />}
-                                                Upgrade to Pro
-                                            </button>
-                                        )}
-                                        {planType !== 'free' && (
-                                            <button
-                                                onClick={() => cancelSub.mutate(true)}
-                                                disabled={cancelSub.isPending}
-                                                className="px-4 py-2 text-xs font-medium rounded-xl transition-all hover:opacity-80"
-                                                style={{ background: 'rgba(239,68,68,0.06)', color: 'var(--color-danger)', border: '1px solid rgba(239,68,68,0.15)' }}
-                                            >
-                                                {cancelSub.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Cancel'}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Usage Bars */}
-                                {usage && (
-                                    <div className="space-y-3 pt-3 border-t" style={{ borderColor: 'rgba(99,102,241,0.1)' }}>
-                                        <UsageBar
-                                            label="Activities"
-                                            current={usage.usage.activities_count}
-                                            limit={usage.limits.activities_per_month}
-                                            color="#6366f1"
-                                        />
-                                        <UsageBar
-                                            label="Graph Nodes"
-                                            current={usage.usage.graph_nodes_count}
-                                            limit={usage.limits.graph_nodes}
-                                            color="#8b5cf6"
-                                        />
-                                        <UsageBar
-                                            label="API Calls"
-                                            current={usage.usage.api_calls_count}
-                                            limit={usage.limits.api_calls_per_day}
-                                            color="#3b82f6"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Quick Actions */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <a
-                                    href="/dashboard/billing"
-                                    className="flex items-center gap-3 p-4 rounded-xl transition-all hover:scale-[1.01]"
-                                    style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
-                                >
-                                    <CreditCard className="w-5 h-5" style={{ color: '#6366f1' }} />
-                                    <div>
-                                        <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>Billing & Invoices</p>
-                                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>View invoices and payment history</p>
-                                    </div>
-                                    <ChevronRight className="w-4 h-4 ml-auto" style={{ color: 'var(--color-muted)' }} />
-                                </a>
-                                <a
-                                    href="/dashboard/billing#pricing"
-                                    className="flex items-center gap-3 p-4 rounded-xl transition-all hover:scale-[1.01]"
-                                    style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
-                                >
-                                    <TrendingUp className="w-5 h-5" style={{ color: '#8b5cf6' }} />
-                                    <div>
-                                        <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>Compare Plans</p>
-                                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>View pricing and upgrade options</p>
-                                    </div>
-                                    <ChevronRight className="w-4 h-4 ml-auto" style={{ color: 'var(--color-muted)' }} />
-                                </a>
-                            </div>
-                        </div>
-                    )}
-
                     {/* ── Privacy ────────────────────────────────────────── */}
                     {activeTab === 'privacy' && (
                         <div className="space-y-6">
@@ -827,15 +710,81 @@ export default function SettingsPage() {
                     {activeTab === 'notifications' && (
                         <div className="space-y-6">
                             <div>
-                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>Notifications</h3>
-                                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Choose what updates you receive. Changes are saved to your account.</p>
+                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>Notification Preferences</h3>
+                                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Control how and when MiniMe contacts you. Changes are saved to your account.</p>
                             </div>
-                            <div className="space-y-1">
-                                <Toggle enabled={notifs.emailNotifications} onToggle={() => setNotifs(n => ({ ...n, emailNotifications: !n.emailNotifications }))} label="Email Notifications" description="Receive updates via email" />
-                                <Toggle enabled={notifs.desktopNotifications} onToggle={() => setNotifs(n => ({ ...n, desktopNotifications: !n.desktopNotifications }))} label="Desktop Notifications" description="Show system notifications for important events" />
-                                <Toggle enabled={notifs.weeklyDigest} onToggle={() => setNotifs(n => ({ ...n, weeklyDigest: !n.weeklyDigest }))} label="Weekly Digest" description="Receive a weekly summary of your activity" />
-                                <Toggle enabled={notifs.productivityAlerts} onToggle={() => setNotifs(n => ({ ...n, productivityAlerts: !n.productivityAlerts }))} label="Productivity Alerts" description="Get notified when unusual patterns are detected" />
-                                <Toggle enabled={notifs.dndEnabled} onToggle={() => setNotifs(n => ({ ...n, dndEnabled: !n.dndEnabled }))} label="Do Not Disturb" description="Mute all notifications during focus sessions" />
+
+                            {/* Delivery Channels */}
+                            <div>
+                                <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-secondary)' }}>Delivery Channels</h4>
+                                <div className="space-y-1">
+                                    <Toggle enabled={notifs.emailNotifications} onToggle={() => setNotifs(n => ({ ...n, emailNotifications: !n.emailNotifications }))} label="Email Notifications" description="Receive updates and alerts via email" />
+                                    <Toggle enabled={notifs.desktopNotifications} onToggle={() => setNotifs(n => ({ ...n, desktopNotifications: !n.desktopNotifications }))} label="Desktop Notifications" description="Show system notifications for important events" />
+                                </div>
+                            </div>
+
+                            {/* Insight Categories */}
+                            <div className="pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                                <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-secondary)' }}>Insight Categories</h4>
+                                <div className="space-y-1">
+                                    <Toggle enabled={notifs.productivityAlerts} onToggle={() => setNotifs(n => ({ ...n, productivityAlerts: !n.productivityAlerts }))} label="Productivity Alerts" description="Get notified when unusual patterns are detected" />
+                                    <Toggle enabled={notifs.milestoneAlerts} onToggle={() => setNotifs(n => ({ ...n, milestoneAlerts: !n.milestoneAlerts }))} label="Milestone Celebrations" description="Receive notifications when you hit milestones" />
+                                    <Toggle enabled={notifs.focusReminders} onToggle={() => setNotifs(n => ({ ...n, focusReminders: !n.focusReminders }))} label="Focus Reminders" description="Get nudged when context-switching spikes" />
+                                </div>
+                            </div>
+
+                            {/* Schedule */}
+                            <div className="pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                                <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-secondary)' }}>Schedule</h4>
+                                <Toggle enabled={notifs.dndEnabled} onToggle={() => setNotifs(n => ({ ...n, dndEnabled: !n.dndEnabled }))} label="Do Not Disturb" description="Mute all notifications during quiet hours" />
+                                {notifs.dndEnabled && (
+                                    <div className="flex items-center gap-3 mt-2 ml-4">
+                                        <div>
+                                            <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>From</label>
+                                            <input
+                                                type="time"
+                                                value={notifs.quietHoursStart}
+                                                onChange={(e) => setNotifs(n => ({ ...n, quietHoursStart: e.target.value }))}
+                                                className="block mt-1 px-3 py-1.5 text-sm rounded-lg outline-none"
+                                                style={{ background: 'var(--color-shell)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>To</label>
+                                            <input
+                                                type="time"
+                                                value={notifs.quietHoursEnd}
+                                                onChange={(e) => setNotifs(n => ({ ...n, quietHoursEnd: e.target.value }))}
+                                                className="block mt-1 px-3 py-1.5 text-sm rounded-lg outline-none"
+                                                style={{ background: 'var(--color-shell)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Digest Frequency */}
+                            <div className="pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                                <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-secondary)' }}>Digest Frequency</h4>
+                                <Toggle enabled={notifs.weeklyDigest} onToggle={() => setNotifs(n => ({ ...n, weeklyDigest: !n.weeklyDigest }))} label="Activity Digest" description="Receive a summary of your activity" />
+                                {notifs.weeklyDigest && (
+                                    <div className="flex gap-2 mt-2 ml-4">
+                                        {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                                            <button
+                                                key={freq}
+                                                onClick={() => setNotifs(n => ({ ...n, digestFrequency: freq }))}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all capitalize"
+                                                style={{
+                                                    background: notifs.digestFrequency === freq ? 'rgba(99,102,241,0.1)' : 'var(--color-shell)',
+                                                    color: notifs.digestFrequency === freq ? 'var(--color-accent)' : 'var(--color-secondary)',
+                                                    border: `1px solid ${notifs.digestFrequency === freq ? 'rgba(99,102,241,0.3)' : 'var(--color-border)'}`,
+                                                }}
+                                            >
+                                                {freq}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -851,53 +800,11 @@ export default function SettingsPage() {
                                 <IntegrationCard provider="github" name="GitHub" desc="Track commits, PRs, and code reviews" />
                                 <IntegrationCard provider="google" name="Google Calendar" desc="Sync meetings and events" />
                                 <IntegrationCard provider="notion" name="Notion" desc="Connect documentation and notes" />
-                                <ComingSoonCard name="Slack" desc="Monitor communication patterns" />
-                                <ComingSoonCard name="Jira" desc="Track project tasks and sprints" />
                             </div>
                         </div>
                     )}
 
-                    {/* ── Data & Backup ────────────────────────────────────── */}
-                    {activeTab === 'data' && (
-                        <div className="space-y-6">
-                            <div>
-                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>Data & Backup</h3>
-                                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Export, backup, or delete your data</p>
-                            </div>
-                            <Toggle enabled={autoBackup} onToggle={() => setAutoBackup(v => !v)} label="Automatic Backups" description="Daily encrypted backups of your activity data" />
-                            <div className="space-y-3">
-                                <button
-                                    onClick={handleExportData}
-                                    disabled={exporting}
-                                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors hover:opacity-80"
-                                    style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)', color: 'var(--color-primary)' }}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        {exporting ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--color-accent)' }} /> : <Download className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />}
-                                        <div className="text-left">
-                                            <p className="text-sm font-medium">{exporting ? 'Exporting...' : 'Export All Data'}</p>
-                                            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Download a GDPR-compliant export of all your data</p>
-                                        </div>
-                                    </div>
-                                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--color-muted)' }} />
-                                </button>
-                                <button
-                                    onClick={() => setShowDeleteDataModal(true)}
-                                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors hover:opacity-80"
-                                    style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)', color: 'var(--color-danger)' }}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <Trash2 className="w-5 h-5" />
-                                        <div className="text-left">
-                                            <p className="text-sm font-medium">Delete All Data</p>
-                                            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Permanently delete all your activity data</p>
-                                        </div>
-                                    </div>
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    )}
+
 
                     {/* ── AI & LLM ─────────────────────────────────────────── */}
                     {activeTab === 'ai' && <AISettingsTab />}
@@ -936,6 +843,17 @@ export default function SettingsPage() {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {/* ── Data & Sync ────────────────────────────────────── */}
+                    {activeTab === 'sync' && (
+                        <SyncTab
+                            handleExportData={handleExportData}
+                            exporting={exporting}
+                            setShowDeleteDataModal={setShowDeleteDataModal}
+                            planType={planType}
+                            handleUpgrade={handleUpgrade}
+                        />
                     )}
 
                     {/* ── Save button ───────────────────────────────────────── */}
@@ -988,22 +906,10 @@ export default function SettingsPage() {
             )}
 
             {/* ── Delete Data Modal ────────────────────────────────── */}
-            {showDeleteDataModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-                    <div className="w-full max-w-md rounded-2xl p-6 shadow-xl" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                        <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-danger)' }}>Delete All Data</h3>
-                        <p className="text-sm mb-4" style={{ color: 'var(--color-muted)' }}>This will permanently delete all your activity data. Your account will remain active. Type <strong>DELETE</strong> to confirm.</p>
-                        <input type="text" placeholder='Type "DELETE" to confirm' value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)}
-                            className="w-full px-4 py-2.5 text-sm rounded-xl outline-none" style={{ background: 'var(--color-shell)', color: 'var(--color-primary)', border: '1px solid rgba(239,68,68,0.3)' }} />
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => { setShowDeleteDataModal(false); setDeleteConfirmText(''); }}
-                                className="px-4 py-2 text-sm rounded-xl" style={{ color: 'var(--color-secondary)' }}>Cancel</button>
-                            <button onClick={handleDeleteData} disabled={deleteConfirmText !== 'DELETE'}
-                                className="px-4 py-2 text-sm font-medium rounded-xl disabled:opacity-40" style={{ background: 'var(--color-danger)', color: '#fff' }}>Delete All Data</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {showDeleteDataModal && <DeleteDataModal
+                onDelete={handleDeleteData}
+                onCancel={() => { setShowDeleteDataModal(false); setDeleteConfirmText(''); }}
+            />}
 
             {/* ── Delete Account Modal ─────────────────────────────── */}
             {showDeleteAccountModal && (
@@ -1214,6 +1120,738 @@ function AISettingsTab() {
                             : `✗ Connection failed: ${testResult.error}`}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+// ── Sync Provider Card ────────────────────────────────────────────────────────
+
+function SyncProviderCard({
+    name, icon: Icon, color, provider, status,
+    onConnect, onDisconnect, onRestore, isConnecting, isDisconnecting, isRestoring,
+}: {
+    name: string;
+    icon: React.ElementType;
+    color: string;
+    provider: 'gdrive' | 'onedrive';
+    status?: ProviderStatus;
+    onConnect: () => void;
+    onDisconnect: () => void;
+    onRestore: () => void;
+    isConnecting: boolean;
+    isDisconnecting: boolean;
+    isRestoring: boolean;
+}) {
+    const connected = status?.connected ?? false;
+    return (
+        <div
+            className="rounded-xl p-5 space-y-3"
+            style={{
+                background: connected ? `rgba(${color},0.03)` : 'var(--color-shell)',
+                border: `1px solid ${connected ? `rgba(${color},0.25)` : 'var(--color-border)'}`,
+            }}
+        >
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: connected ? `rgba(${color},0.1)` : 'var(--color-border)' }}
+                    >
+                        <Icon className="w-5 h-5" style={{ color: connected ? `rgb(${color})` : 'var(--color-muted)' }} />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>{name}</p>
+                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                            {connected && status?.account
+                                ? status.account.email
+                                : 'Not connected'}
+                        </p>
+                    </div>
+                </div>
+                <button
+                    onClick={connected ? onDisconnect : onConnect}
+                    disabled={isConnecting || isDisconnecting}
+                    className="px-4 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    style={{
+                        background: connected ? 'rgba(239,68,68,0.07)' : `rgb(${color})`,
+                        color: connected ? 'var(--color-danger)' : '#fff',
+                        border: connected ? '1px solid rgba(239,68,68,0.2)' : 'none',
+                    }}
+                >
+                    {(isConnecting || isDisconnecting) && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {connected ? 'Disconnect' : <><ExternalLink className="w-3 h-3" /> Connect</>}
+                </button>
+            </div>
+
+            {connected && (
+                <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                        {status?.last_sync
+                            ? <>Last sync: {new Date(status.last_sync).toLocaleString()}</>
+                            : 'Never synced'}
+                        {status?.snapshot_count ? <> · {status.snapshot_count} snapshots</> : ''}
+                    </div>
+                    <button
+                        onClick={onRestore}
+                        disabled={isRestoring}
+                        className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-lg transition-all disabled:opacity-50"
+                        style={{ background: 'var(--color-surface)', color: 'var(--color-secondary)', border: '1px solid var(--color-border)' }}
+                    >
+                        {isRestoring ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                        Restore
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Sync Tab Content ──────────────────────────────────────────────────────────
+
+function SyncTab({
+    handleExportData,
+    exporting,
+    setShowDeleteDataModal,
+    planType,
+    handleUpgrade,
+}: {
+    handleExportData: () => void;
+    exporting: boolean;
+    setShowDeleteDataModal: (show: boolean) => void;
+    planType: string;
+    handleUpgrade: (plan: string) => void;
+}) {
+    const isFree = planType === 'free' || !planType;
+
+    const { data: syncStatus, isLoading } = useCloudSyncStatus();
+    const gdriveConnect = useGDriveConnect();
+    const gdriveDisconnect = useGDriveDisconnect();
+    const oneDriveConnect = useOneDriveConnect();
+    const oneDriveDisconnect = useOneDriveDisconnect();
+    const backupNow = useBackupNow();
+    const gdriveRestore = useRestoreFromCloud('gdrive');
+    const oneDriveRestore = useRestoreFromCloud('onedrive');
+
+    const gdrive = syncStatus?.providers.gdrive;
+    const onedrive = syncStatus?.providers.onedrive;
+    const anyConnected = gdrive?.connected || onedrive?.connected;
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>Data & Sync</h3>
+                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                    Your data is encrypted with AES-256-GCM locally before upload. The cloud provider never sees plaintext.
+                </p>
+            </div>
+
+            {/* Encryption info */}
+            <div
+                className="flex items-center gap-3 p-4 rounded-xl"
+                style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)' }}
+            >
+                <Lock className="w-5 h-5 flex-shrink-0" style={{ color: '#6366f1' }} />
+                <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>End-to-End Encrypted</p>
+                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                        Algorithm: {syncStatus?.encryption.algorithm ?? 'AES-256-GCM'}
+                        {syncStatus?.encryption.key_fingerprint
+                            ? ` · Key fingerprint: …${syncStatus.encryption.key_fingerprint}`
+                            : ''}
+                    </p>
+                </div>
+            </div>
+
+            {/* Encryption info + Provider cards + Backup — gated behind Pro */}
+            {isFree ? (
+                /* ── Free user paywall ──────────────────────────────────── */
+                <div
+                    className="rounded-2xl p-8 text-center relative overflow-hidden"
+                    style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
+                >
+                    {/* Decorative gradient blob */}
+                    <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ background: 'radial-gradient(ellipse at 50% -20%, rgba(99,102,241,0.12) 0%, transparent 60%)' }}
+                    />
+
+                    <div
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                        style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}
+                    >
+                        <Lock className="w-7 h-7" style={{ color: '#6366f1' }} />
+                    </div>
+
+                    <h4 className="text-lg font-bold mb-1" style={{ color: 'var(--color-primary)' }}>
+                        Cloud Sync is a Pro feature
+                    </h4>
+                    <p className="text-sm mb-6" style={{ color: 'var(--color-muted)' }}>
+                        Upgrade to back up your data to the cloud and access it across all your devices.
+                    </p>
+
+                    {/* Feature list */}
+                    <ul className="text-left space-y-2.5 mb-6 max-w-xs mx-auto">
+                        {[
+                            'AES-256-GCM encrypted backups — only you can decrypt',
+                            'Google Drive & Microsoft OneDrive support',
+                            'Multi-device restore — log in anywhere, get your data back',
+                            'Incremental backups (only changed records are uploaded)',
+                            'Automatic daily / weekly / monthly cadence',
+                        ].map((f) => (
+                            <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: 'var(--color-secondary)' }}>
+                                <span className="mt-0.5 w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold"
+                                    style={{ background: '#6366f1' }}>✓</span>
+                                {f}
+                            </li>
+                        ))}
+                    </ul>
+
+                    <button
+                        onClick={() => handleUpgrade('pro')}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] shadow-lg"
+                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 14px rgba(99,102,241,0.4)' }}
+                    >
+                        <Crown className="w-4 h-4" />
+                        Upgrade to Pro
+                    </button>
+                    <p className="text-xs mt-3" style={{ color: 'var(--color-muted)' }}>14-day free trial · Cancel anytime</p>
+                </div>
+            ) : (
+                /* ── Pro / Enterprise: full sync UI ────────────────────── */
+                <>
+                    <div className="space-y-3">
+                        <h4 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Cloud Providers</h4>
+
+                        <SyncProviderCard
+                            name="Google Drive"
+                            icon={HardDrive}
+                            color="66,133,244"
+                            provider="gdrive"
+                            status={gdrive}
+                            onConnect={() => gdriveConnect.mutate()}
+                            onDisconnect={() => gdriveDisconnect.mutate()}
+                            onRestore={() => gdriveRestore.mutate()}
+                            isConnecting={gdriveConnect.isPending}
+                            isDisconnecting={gdriveDisconnect.isPending}
+                            isRestoring={gdriveRestore.isPending}
+                        />
+
+                        <SyncProviderCard
+                            name="Microsoft OneDrive"
+                            icon={Cloud}
+                            color="0,120,212"
+                            provider="onedrive"
+                            status={onedrive}
+                            onConnect={() => oneDriveConnect.mutate()}
+                            onDisconnect={() => oneDriveDisconnect.mutate()}
+                            onRestore={() => oneDriveRestore.mutate()}
+                            isConnecting={oneDriveConnect.isPending}
+                            isDisconnecting={oneDriveDisconnect.isPending}
+                            isRestoring={oneDriveRestore.isPending}
+                        />
+                    </div>
+
+                    {/* Backup now */}
+                    <div
+                        className="rounded-xl p-5 space-y-3"
+                        style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Backup Now</p>
+                                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                                    Encrypt and upload your activity data to all connected providers.
+                                    Only changed records are re-uploaded (incremental).
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => backupNow.mutate({ data: [] })}
+                                disabled={backupNow.isPending || !anyConnected}
+                                className="flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all hover:opacity-90 disabled:opacity-40"
+                                style={{ background: 'var(--color-accent)', color: '#fff' }}
+                            >
+                                {backupNow.isPending
+                                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Backing up…</>
+                                    : <><UploadCloud className="w-4 h-4" /> Backup Now</>}
+                            </button>
+                        </div>
+                        {!anyConnected && (
+                            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                                ⚠ Connect at least one provider above to enable backups.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* ── Cloud Sync Schedule ── */}
+                    <div
+                        className="rounded-xl p-5 space-y-4"
+                        style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
+                    >
+                        <SyncScheduleSection />
+                    </div>
+
+                    {/* ── Cloud Sync (Push to cloud DBs) ── */}
+                    <div
+                        className="rounded-xl p-5 space-y-3"
+                        style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
+                    >
+                        <CloudSyncTriggerSection />
+                    </div>
+
+                    {/* ── Sync History ── */}
+                    <SyncHistorySection />
+
+                    {/* ── Restore from Cloud ── */}
+                    <RestoreFromCloudSection />
+
+                    {/* ── Export & Backup ── */}
+                    <ExportBackupSection />
+                </>
+            )}
+
+
+            <div className="space-y-3 pt-6 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Account Data</h4>
+                <button
+                    onClick={() => setShowDeleteDataModal(true)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors hover:opacity-80"
+                    style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)', color: 'var(--color-danger)' }}
+                >
+                    <div className="flex items-center gap-3">
+                        <Trash2 className="w-5 h-5" />
+                        <div className="text-left">
+                            <p className="text-sm font-medium">Delete All Data</p>
+                            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Permanently delete all your activity data</p>
+                        </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+
+// ── Sync Schedule Section ─────────────────────────────────────────────────────
+
+const FREQ_OPTIONS = [
+    { value: 'daily', label: 'Daily' },
+    { value: 'twice_daily', label: 'Twice Daily' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'biweekly', label: 'Bi-weekly' },
+    { value: 'monthly', label: 'Monthly' },
+];
+
+function SyncScheduleSection() {
+    const { data: schedule, isError } = useSyncSchedule();
+    const updateSchedule = useUpdateSchedule();
+    const [freq, setFreq] = useState('daily');
+    const [syncTime, setSyncTime] = useState('02:00');
+
+    useEffect(() => {
+        if (schedule) {
+            setFreq(schedule.frequency);
+            setSyncTime(schedule.sync_time);
+        }
+    }, [schedule]);
+
+    if (isError) return null; // Not a pro user or backend down — hide section
+
+    return (
+        <>
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Sync Schedule</p>
+                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                        Automatically push your local data to the cloud on a schedule.
+                        {schedule?.last_synced_at && (
+                            <> Last synced: {new Date(schedule.last_synced_at).toLocaleString()}</>
+                        )}
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+                {FREQ_OPTIONS.map((opt) => (
+                    <button
+                        key={opt.value}
+                        onClick={() => setFreq(opt.value)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all"
+                        style={{
+                            background: freq === opt.value ? 'rgba(99,102,241,0.1)' : 'var(--color-base)',
+                            color: freq === opt.value ? 'var(--color-accent)' : 'var(--color-secondary)',
+                            border: `1px solid ${freq === opt.value ? 'rgba(99,102,241,0.3)' : 'var(--color-border)'}`,
+                        }}
+                    >
+                        {opt.label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="flex items-center gap-3">
+                <label className="text-xs" style={{ color: 'var(--color-muted)' }}>Preferred time:</label>
+                <input
+                    type="time"
+                    value={syncTime}
+                    onChange={(e) => setSyncTime(e.target.value)}
+                    className="px-2 py-1 rounded-lg text-xs"
+                    style={{ background: 'var(--color-base)', border: '1px solid var(--color-border)', color: 'var(--color-primary)' }}
+                />
+                <button
+                    onClick={() => updateSchedule.mutate({ frequency: freq, sync_time: syncTime })}
+                    disabled={updateSchedule.isPending}
+                    className="ml-auto flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg text-white transition-all hover:opacity-90 disabled:opacity-40"
+                    style={{ background: 'var(--color-accent)' }}
+                >
+                    {updateSchedule.isPending
+                        ? <><Loader2 className="w-3 h-3 animate-spin" /> Saving…</>
+                        : <><Save className="w-3 h-3" /> Save Schedule</>}
+                </button>
+            </div>
+        </>
+    );
+}
+
+
+// ── Cloud Sync Trigger ────────────────────────────────────────────────────────
+
+function CloudSyncTriggerSection() {
+    const triggerSync = useTriggerSync();
+
+    return (
+        <>
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Cloud Database Sync</p>
+                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                        Push unsynced data to Supabase, Upstash, Neo4j AuraDB, and Qdrant Cloud.
+                    </p>
+                </div>
+                <button
+                    onClick={() => triggerSync.mutate()}
+                    disabled={triggerSync.isPending}
+                    className="flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all hover:opacity-90 disabled:opacity-40"
+                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff' }}
+                >
+                    {triggerSync.isPending
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Syncing…</>
+                        : <><RefreshCcw className="w-4 h-4" /> Sync Now</>}
+                </button>
+            </div>
+            {triggerSync.data && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                    {Object.entries(triggerSync.data.targets).map(([name, info]: [string, any]) => (
+                        <span
+                            key={name}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium"
+                            style={{
+                                background: info.error ? 'rgba(239,68,68,0.08)' : info.skipped ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.08)',
+                                color: info.error ? '#ef4444' : info.skipped ? '#d97706' : '#22c55e',
+                                border: `1px solid ${info.error ? 'rgba(239,68,68,0.2)' : info.skipped ? 'rgba(245,158,11,0.2)' : 'rgba(34,197,94,0.2)'}`,
+                            }}
+                        >
+                            {info.error ? '✗' : info.skipped ? '⊘' : '✓'} {name}: {info.records ?? 0} records
+                        </span>
+                    ))}
+                </div>
+            )}
+        </>
+    );
+}
+
+
+// ── Sync History ──────────────────────────────────────────────────────────────
+
+function SyncHistorySection() {
+    const { data: historyData, isError } = useSyncHistory();
+    const [expanded, setExpanded] = useState(false);
+
+    if (isError || !historyData?.history?.length) return null;
+
+    const items = historyData.history.slice(0, expanded ? 20 : 5);
+
+    return (
+        <div
+            className="rounded-xl p-5 space-y-3"
+            style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
+        >
+            <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Sync History</p>
+                {historyData.history.length > 5 && (
+                    <button
+                        onClick={() => setExpanded(!expanded)}
+                        className="text-xs font-medium transition-colors"
+                        style={{ color: 'var(--color-accent)' }}
+                    >
+                        {expanded ? 'Show less' : `Show all (${historyData.count})`}
+                    </button>
+                )}
+            </div>
+            <div className="space-y-2">
+                {items.map((entry) => {
+                    const statusColor = entry.status === 'completed' ? '#22c55e'
+                        : entry.status === 'failed' ? '#ef4444' : '#f59e0b';
+                    const isRunning = entry.status === 'running';
+                    const duration = entry.completed_at && entry.started_at
+                        ? Math.round((new Date(entry.completed_at).getTime() - new Date(entry.started_at).getTime()) / 1000)
+                        : isRunning
+                            ? Math.round((Date.now() - new Date(entry.started_at).getTime()) / 1000)
+                            : null;
+
+                    return (
+                        <div
+                            key={entry.id}
+                            className="flex items-center justify-between py-2 px-3 rounded-lg"
+                            style={{ background: 'var(--color-base)' }}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className={`w-2 h-2 rounded-full flex-shrink-0${isRunning ? ' animate-pulse' : ''}`}
+                                    style={{ background: statusColor }}
+                                />
+                                <span className="text-xs" style={{ color: 'var(--color-primary)' }}>
+                                    {new Date(entry.started_at).toLocaleString()}
+                                </span>
+                                <span
+                                    className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                                    style={{ background: 'rgba(99,102,241,0.08)', color: 'var(--color-accent)' }}
+                                >
+                                    {entry.trigger}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-xs${isRunning ? ' font-medium' : ''}`} style={{ color: isRunning ? 'var(--color-accent)' : 'var(--color-muted)' }}>
+                                    {entry.records_synced} records{isRunning ? '…' : ''}
+                                </span>
+                                {duration !== null && (
+                                    <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                                        {duration}s
+                                    </span>
+                                )}
+                                <span
+                                    className={`text-xs font-medium${isRunning ? ' animate-pulse' : ''}`}
+                                    style={{ color: statusColor }}
+                                >
+                                    {entry.status}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ── Restore from Cloud ────────────────────────────────────────────────────────
+
+function RestoreFromCloudSection() {
+    const restoreMutation = useRestoreFromCloudSync();
+
+    return (
+        <div
+            className="rounded-xl p-5 space-y-3"
+            style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
+        >
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Restore from Cloud</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+                        Pull your data from the cloud to this device
+                    </p>
+                </div>
+                <button
+                    onClick={() => restoreMutation.mutate()}
+                    disabled={restoreMutation.isPending}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                    style={{
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: '#fff',
+                        opacity: restoreMutation.isPending ? 0.7 : 1,
+                    }}
+                    id="restore-cloud-btn"
+                >
+                    {restoreMutation.isPending
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Restoring…</>
+                        : <><Download className="w-4 h-4" /> Restore</>}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ── Export & Backup ───────────────────────────────────────────────────────────
+
+function ExportBackupSection() {
+    const [exportPassword, setExportPassword] = useState('');
+    const [importPassword, setImportPassword] = useState('');
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const exportDownload = useExportDownload();
+    const exportUpload = useExportUpload();
+
+    return (
+        <div
+            className="rounded-xl p-5 space-y-5"
+            style={{ background: 'var(--color-shell)', border: '1px solid var(--color-border)' }}
+        >
+            <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Export & Backup</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+                    Download or import your data as an encrypted .mmexport file
+                </p>
+            </div>
+
+            {/* Download section */}
+            <div className="space-y-3">
+                <p className="text-xs font-medium" style={{ color: 'var(--color-primary)' }}>📦 Download Export</p>
+                <div className="flex items-center gap-3">
+                    <input
+                        type="password"
+                        placeholder="Enter your password"
+                        value={exportPassword}
+                        onChange={(e) => setExportPassword(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-lg text-sm"
+                        style={{
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border)',
+                            color: 'var(--color-primary)',
+                        }}
+                        id="export-password-input"
+                    />
+                    <button
+                        onClick={() => { exportDownload.mutate(exportPassword); setExportPassword(''); }}
+                        disabled={!exportPassword || exportDownload.isPending}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                        style={{
+                            background: !exportPassword ? 'var(--color-border)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: '#fff',
+                            opacity: exportDownload.isPending ? 0.7 : 1,
+                        }}
+                        id="export-download-btn"
+                    >
+                        {exportDownload.isPending
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Exporting…</>
+                            : <><Download className="w-4 h-4" /> Download .mmexport</>}
+                    </button>
+                </div>
+                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                    ⚠️ Remember the password you use — it&apos;s required to decrypt this file later.
+                </p>
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderTop: '1px solid var(--color-border)' }} />
+
+            {/* Upload section */}
+            <div className="space-y-3">
+                <p className="text-xs font-medium" style={{ color: 'var(--color-primary)' }}>📥 Import from File</p>
+                <div className="flex items-center gap-3">
+                    <input
+                        type="file"
+                        accept=".mmexport"
+                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                        className="flex-1 text-sm"
+                        style={{ color: 'var(--color-muted)' }}
+                        id="import-file-input"
+                    />
+                </div>
+                {importFile && (
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="password"
+                            placeholder="Password used during export"
+                            value={importPassword}
+                            onChange={(e) => setImportPassword(e.target.value)}
+                            className="flex-1 px-3 py-2 rounded-lg text-sm"
+                            style={{
+                                background: 'var(--color-surface)',
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-primary)',
+                            }}
+                            id="import-password-input"
+                        />
+                        <button
+                            onClick={() => {
+                                if (importFile && importPassword) {
+                                    exportUpload.mutate({ password: importPassword, file: importFile });
+                                    setImportPassword('');
+                                    setImportFile(null);
+                                }
+                            }}
+                            disabled={!importPassword || exportUpload.isPending}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                            style={{
+                                background: !importPassword ? 'var(--color-border)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                color: '#fff',
+                                opacity: exportUpload.isPending ? 0.7 : 1,
+                            }}
+                            id="import-upload-btn"
+                        >
+                            {exportUpload.isPending
+                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Importing…</>
+                                : <><Upload className="w-4 h-4" /> Import</>}
+                        </button>
+                    </div>
+                )}
+                {exportUpload.data && (
+                    <p className="text-xs font-medium" style={{ color: '#10b981' }}>
+                        ✅ Imported {exportUpload.data.total_imported} records successfully
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ── Delete Data Modal (with own local state) ──────────────────────────────────
+
+function DeleteDataModal({ onDelete, onCancel }: { onDelete: () => void; onCancel: () => void }) {
+    const [text, setText] = useState('');
+    const isMatch = text.trim() === 'DELETE';
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+            <div className="w-full max-w-md rounded-2xl p-6 shadow-xl" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-danger)' }}>Delete All Data</h3>
+                <p className="text-sm mb-4" style={{ color: 'var(--color-muted)' }}>
+                    This will permanently delete all your data across all databases. Your account will remain active.
+                    Type <strong>DELETE</strong> to confirm.
+                </p>
+                <input
+                    type="text"
+                    autoComplete="off"
+                    autoFocus
+                    placeholder='Type "DELETE" to confirm'
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    className="w-full px-4 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: 'var(--color-shell)', color: 'var(--color-primary)', border: '1px solid rgba(239,68,68,0.3)' }}
+                    id="delete-confirm-input"
+                />
+                <div className="flex justify-end gap-3 mt-6">
+                    <button
+                        onClick={onCancel}
+                        className="px-4 py-2 text-sm rounded-xl hover:opacity-80"
+                        style={{ color: 'var(--color-secondary)' }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onDelete}
+                        disabled={!isMatch}
+                        className="px-4 py-2 text-sm font-medium rounded-xl transition-all"
+                        style={{
+                            background: isMatch ? '#ef4444' : 'rgba(239,68,68,0.3)',
+                            color: '#fff',
+                            cursor: isMatch ? 'pointer' : 'not-allowed',
+                            opacity: isMatch ? 1 : 0.5,
+                        }}
+                        id="delete-confirm-btn"
+                    >
+                        Delete All Data
+                    </button>
+                </div>
             </div>
         </div>
     );

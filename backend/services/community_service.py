@@ -11,7 +11,7 @@ from collections import defaultdict
 
 from prometheus_client import Counter, Histogram, Gauge
 
-from backend.config.neo4j_config import get_neo4j_session, get_neo4j_driver
+from config.neo4j_config import get_neo4j_session, get_neo4j_driver
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,14 @@ class CommunityService:
     def __init__(self):
         """Initialize community detection service."""
         self.logger = logging.getLogger(__name__)
-        self.driver = get_neo4j_driver()
+        self._driver = None  # Lazy init — Neo4j may not be available
+    
+    @property
+    def driver(self):
+        """Lazy Neo4j driver initialization."""
+        if self._driver is None:
+            self._driver = get_neo4j_driver()
+        return self._driver
     
     def detect_communities(
         self,

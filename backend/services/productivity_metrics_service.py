@@ -20,13 +20,13 @@ import structlog
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.config.app_categories import (
+from config.app_categories import (
     categorize_app, categorize_domain,
     AppCategory
 )
-from backend.models.analytics_models import DailyMetrics
-from backend.database.redis_client import get_redis_client
-from backend.database.postgres import get_db
+from models.analytics_models import DailyMetrics
+from database.redis_client import get_redis_client
+from database.postgres import get_db
 import json
 
 logger = structlog.get_logger(__name__)

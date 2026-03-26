@@ -27,26 +27,26 @@ export function UsageMetrics() {
         {
             label: 'Activities',
             icon: <Activity className="w-5 h-5" />,
-            current: data.usage.activities_count,
-            limit: data.limits.activities_per_month,
+            current: data.usage?.activities_count ?? 0,
+            limit: data.limits?.activities_per_month ?? -1,
             color: 'blue',
-            warning: data.warnings.activities,
+            warning: data.warnings?.activities,
         },
         {
             label: 'Graph Nodes',
             icon: <Database className="w-5 h-5" />,
-            current: data.usage.graph_nodes_count,
-            limit: data.limits.graph_nodes,
+            current: data.usage?.graph_nodes_count ?? 0,
+            limit: data.limits?.graph_nodes ?? -1,
             color: 'purple',
-            warning: data.warnings.graph_nodes,
+            warning: data.warnings?.graph_nodes,
         },
         {
             label: 'API Calls Today',
             icon: <Zap className="w-5 h-5" />,
-            current: data.usage.api_calls_count,
-            limit: data.limits.api_calls_per_day,
+            current: data.usage?.api_calls_count ?? 0,
+            limit: data.limits?.api_calls_per_day ?? -1,
             color: 'green',
-            warning: data.warnings.api_calls,
+            warning: data.warnings?.api_calls,
         },
     ];
 
@@ -100,7 +100,7 @@ export function UsageMetrics() {
                                     </p>
                                     {!isUnlimited && (
                                         <p className="text-xs text-gray-500">
-                                            {metric.warning?.remaining.toLocaleString()} remaining
+                                            {(metric.warning?.remaining ?? 0).toLocaleString()} remaining
                                         </p>
                                     )}
                                 </div>

@@ -50,10 +50,10 @@ export default function BillingPage() {
                         Email Support
                     </a>
                     <a
-                        href="/docs/billing"
+                        href="mailto:support@minime.app?subject=Billing%20Question"
                         className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
                     >
-                        View Documentation
+                        View FAQ
                     </a>
                 </div>
             </div>

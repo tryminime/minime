@@ -11,10 +11,10 @@ from typing import Optional, Dict, Any
 import structlog
 import uuid as uuid_lib
 
-from backend.database.postgres import get_db
-from backend.models import User
-from backend.auth.jwt_handler import decode_token, verify_token_type
-from backend.auth.password import hash_password, validate_password_strength
+from database.postgres import get_db
+from models import User
+from auth.jwt_handler import security
+from auth.password import hash_password, validate_password_strength
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -67,7 +67,12 @@ async def get_current_user_from_token(
     credentials: HTTPAuthorizationCredentials,
     db: AsyncSession
 ) -> User:
-    """Extract and validate user from JWT token."""
+    """Extract and validate user from JWT token.
+    
+    Reuses decode_token/verify_token_type from jwt_handler to avoid duplication.
+    """
+    from auth.jwt_handler import decode_token, verify_token_type
+    
     token = credentials.credentials
     payload = decode_token(token)
     
@@ -93,6 +98,15 @@ async def get_current_user_from_token(
 # =====================================================
 # ENDPOINTS
 # =====================================================
+
+@router.get("/me", response_model=UserProfileResponse)
+async def get_me(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get current user profile (alias for /me/profile)."""
+    return await get_my_profile(credentials, db)
+
 
 @router.get("/me/profile", response_model=UserProfileResponse)
 async def get_my_profile(
@@ -204,7 +218,7 @@ async def change_my_password(
     db: AsyncSession = Depends(get_db)
 ):
     """Change current user's password."""
-    from backend.auth.password import verify_password
+    from auth.password import verify_password
     
     user = await get_current_user_from_token(credentials, db)
     
@@ -238,7 +252,8 @@ async def export_my_data(
     db: AsyncSession = Depends(get_db)
 ):
     """Export all user data as JSON (GDPR compliance)."""
-    from backend.models import Activity
+    from datetime import datetime, timezone
+    from models import Activity
     from fastapi.responses import JSONResponse
 
     user = await get_current_user_from_token(credentials, db)
@@ -274,7 +289,7 @@ async def export_my_data(
             for a in activities
         ],
         "total_activities": len(activities),
-        "exported_at": datetime.utcnow().isoformat(),
+        "exported_at": datetime.now(timezone.utc).isoformat(),
     }
 
     return JSONResponse(
@@ -288,21 +303,108 @@ async def delete_my_data(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete all user activity data (keeps account)."""
-    from backend.models import Activity
-    from sqlalchemy import delete as sql_delete
+    """Delete all user data across all datastores (keeps account).
+
+    Deletes from: PG tables, Neo4j, Qdrant, Redis.
+    """
+    from models import Activity
+    from sqlalchemy import delete as sql_delete, text
 
     user = await get_current_user_from_token(credentials, db)
+    user_id = str(user.id)
+    deleted = {}
 
-    result = await db.execute(
-        sql_delete(Activity).where(Activity.user_id == user.id)
-    )
+    # ── PostgreSQL tables (order matters for FK constraints) ────────────────
+    pg_tables = [
+        "activity_entity_links",  # FK → activities + entities
+        "entities",
+        "content_items",
+        "user_goals",
+        "daily_metrics",
+        "daily_summaries",
+        "weekly_reports",
+        "integrations",
+        "activities",
+        "sync_history",
+    ]
+    for table in pg_tables:
+        try:
+            if table == "activity_entity_links":
+                # Junction table — join via activities for user scope
+                result = await db.execute(text(
+                    """DELETE FROM activity_entity_links
+                       WHERE activity_id IN (
+                           SELECT id FROM activities WHERE user_id = :uid
+                       )"""
+                ), {"uid": user_id})
+            else:
+                result = await db.execute(text(
+                    f"DELETE FROM {table} WHERE user_id = :uid"
+                ), {"uid": user_id})
+            deleted[table] = result.rowcount
+        except Exception as e:
+            logger.warning("delete_table_error", table=table, error=str(e)[:200])
+            deleted[table] = 0
+
     await db.commit()
 
-    deleted_count = result.rowcount
-    logger.info("User data deleted", user_id=str(user.id), count=deleted_count)
+    # ── Neo4j — delete all user nodes and their relationships ──────────────
+    try:
+        from database.neo4j_client import get_neo4j_driver
+        driver = get_neo4j_driver()
+        async with driver.session() as session:
+            result = await session.run(
+                "MATCH (n {user_id: $uid}) DETACH DELETE n RETURN count(n) as cnt",
+                {"uid": user_id},
+            )
+            record = await result.single()
+            deleted["neo4j_nodes"] = record["cnt"] if record else 0
+    except Exception as e:
+        logger.warning("delete_neo4j_error", error=str(e)[:200])
+        deleted["neo4j_nodes"] = 0
 
-    return {"message": f"Deleted {deleted_count} activities", "deleted_count": deleted_count}
+    # ── Qdrant — delete vectors matching user_id ───────────────────────────
+    try:
+        from database.qdrant_client import get_qdrant_client
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        client = get_qdrant_client()
+        for coll_name in ["activities", "entities"]:
+            try:
+                await client.delete(
+                    collection_name=coll_name,
+                    points_selector=Filter(
+                        must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]
+                    ),
+                )
+                deleted[f"qdrant_{coll_name}"] = "cleared"
+            except Exception:
+                deleted[f"qdrant_{coll_name}"] = "skipped"
+    except Exception as e:
+        logger.warning("delete_qdrant_error", error=str(e)[:200])
+
+    # ── Redis — delete user-specific keys ──────────────────────────────────
+    try:
+        from database.redis_client import get_redis_client
+        redis = get_redis_client()
+        prefixes = [f"user:{user_id}:", f"sync:{user_id}:", f"prefs:{user_id}"]
+        redis_deleted = 0
+        for prefix in prefixes:
+            async for key in redis.scan_iter(match=f"{prefix}*"):
+                await redis.delete(key)
+                redis_deleted += 1
+        deleted["redis_keys"] = redis_deleted
+    except Exception as e:
+        logger.warning("delete_redis_error", error=str(e)[:200])
+        deleted["redis_keys"] = 0
+
+    total = sum(v for v in deleted.values() if isinstance(v, int))
+    logger.info("user_data_deleted", user_id=user_id, breakdown=deleted, total=total)
+
+    return {
+        "message": f"Deleted all data ({total} records)",
+        "deleted_count": total,
+        "breakdown": deleted,
+    }
 
 
 @router.delete("/me/account")
@@ -314,12 +416,12 @@ async def delete_my_account(
     Delete current user's account (soft delete for GDPR compliance).
     This marks the account as deleted but retains data for compliance period.
     """
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     user = await get_current_user_from_token(credentials, db)
     
     # Soft delete
-    user.deleted_at = datetime.utcnow()
+    user.deleted_at = datetime.now(timezone.utc)
     user.subscription_status = "deleted"
     await db.commit()
     

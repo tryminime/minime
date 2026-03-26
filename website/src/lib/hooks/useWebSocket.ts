@@ -1,76 +1,34 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000')
-    .replace(/^http/, 'ws');  // http → ws, https → wss
-
 export function useWebSocket() {
-    const [isConnected, setIsConnected] = useState(false);
+    // Refactored to use interval polling instead of WebSocket for stability (matches desktop app behavior).
+    // The signature is kept the same so consumers don't need changes.
+    const [isConnected, setIsConnected] = useState(true);
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-    const wsRef = useRef<WebSocket | null>(null);
     const queryClient = useQueryClient();
-    const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const attempts = useRef(0);
-    const MAX_ATTEMPTS = 3;
 
     useEffect(() => {
-        function connect() {
-            if (attempts.current >= MAX_ATTEMPTS) return;
+        // Poll every 30 seconds
+        const intervalId = setInterval(() => {
+            const token = typeof window !== 'undefined'
+                ? localStorage.getItem('minime_auth_token')
+                : null;
 
-            try {
-                const ws = new WebSocket(`${WS_BASE}/ws`);
-                wsRef.current = ws;
+            if (!token) return;
 
-                ws.onopen = () => {
-                    console.log('[WebSocket] Connected');
-                    setIsConnected(true);
-                    attempts.current = 0;
-                };
+            // Invalidate key data periodically to simulate real-time updates
+            setLastUpdate(new Date());
+            queryClient.invalidateQueries({ queryKey: ['activities'] });
+            queryClient.invalidateQueries({ queryKey: ['productivity'] });
+            queryClient.invalidateQueries({ queryKey: ['collaboration'] });
+            queryClient.invalidateQueries({ queryKey: ['graph'] });
+        }, 30000);
 
-                ws.onclose = () => {
-                    setIsConnected(false);
-                    attempts.current += 1;
-                    if (attempts.current < MAX_ATTEMPTS) {
-                        reconnectTimer.current = setTimeout(connect, 8000);
-                    }
-                };
-
-                ws.onerror = () => {
-                    // Silent — no console.error, no toast
-                    setIsConnected(false);
-                };
-
-                ws.onmessage = (event) => {
-                    try {
-                        const msg = JSON.parse(event.data) as { type: string };
-                        setLastUpdate(new Date());
-                        if (msg.type === 'activity:new') {
-                            queryClient.invalidateQueries({ queryKey: ['productivity'] });
-                        } else if (msg.type === 'metrics:updated') {
-                            queryClient.invalidateQueries({ queryKey: ['productivity'] });
-                            queryClient.invalidateQueries({ queryKey: ['collaboration'] });
-                        } else if (msg.type === 'graph:updated') {
-                            queryClient.invalidateQueries({ queryKey: ['graph'] });
-                            queryClient.invalidateQueries({ queryKey: ['collaboration', 'network'] });
-                        }
-                    } catch {
-                        // ignore unparseable messages
-                    }
-                };
-            } catch {
-                // WebSocket constructor threw — browser blocked, silently exit
-            }
-        }
-
-        connect();
-
-        return () => {
-            if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-            wsRef.current?.close();
-        };
+        return () => clearInterval(intervalId);
     }, [queryClient]);
 
-    return { isConnected, lastUpdate, socket: wsRef.current };
+    return { isConnected, lastUpdate, socket: null };
 }

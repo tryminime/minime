@@ -26,7 +26,7 @@ export function InstallPromptBanner({ onRetry, isRetrying }: Props) {
     if (dismissed) return null;
 
     return (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] w-full max-w-xl px-4">
             <div className="bg-gray-900 text-white rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 pt-4 pb-2">

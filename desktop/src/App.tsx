@@ -14,6 +14,7 @@ import Help from './pages/Help'
 import Entities from './pages/Entities'
 import SetupWizard from './pages/SetupWizard'
 import OAuthCallback from './pages/OAuthCallback'
+import Knowledge from './pages/Knowledge'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { ChatProvider } from './contexts/ChatContext'
 import { ToastProvider } from './components/common/Toast'
@@ -107,6 +108,7 @@ function App() {
                                                     <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
                                                     <Route path="/tasks" element={<Tasks />} />
                                                     <Route path="/entities" element={<Entities />} />
+                                                    <Route path="/knowledge" element={<Knowledge />} />
                                                     <Route path="/chat" element={<Chat />} />
                                                     <Route path="/settings" element={<Settings />} />
                                                     <Route path="/settings/:tab" element={<Settings />} />

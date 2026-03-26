@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Briefcase, TrendingUp, TrendingDown, Minus, Target, ChevronRight, MessageSquare, Star, ArrowRight } from 'lucide-react';
 import { useCareer } from '@/lib/hooks/useGoals';
 import { useSkillsMetrics } from '@/lib/hooks/useSkillsMetrics';
@@ -23,10 +24,19 @@ const TRAJECTORY_INFO: Record<string, { icon: React.ReactNode; label: string; co
 export default function CareerPage() {
     const { data: career, isLoading: careerLoading } = useCareer();
     const { data: skills, isLoading: skillsLoading } = useSkillsMetrics();
+    const [showSkeleton, setShowSkeleton] = useState(false);
 
     const isLoading = careerLoading || skillsLoading;
 
-    if (isLoading) {
+    useEffect(() => {
+        if (isLoading) {
+            const t = setTimeout(() => setShowSkeleton(true), 200);
+            return () => clearTimeout(t);
+        }
+        setShowSkeleton(false);
+    }, [isLoading]);
+
+    if (showSkeleton) {
         return (
             <div className="space-y-6">
                 <div className="h-10 bg-gray-100 rounded animate-pulse w-52" />
@@ -203,26 +213,7 @@ export default function CareerPage() {
 
             </div>
 
-            {/* Skill Growth Timeline from skills data */}
-            {topSkills.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                    <h3 className="font-semibold text-gray-900 mb-4">Current Skill Landscape</h3>
-                    <div className="space-y-3">
-                        {topSkills.slice(0, 6).map(skill => (
-                            <div key={skill.name} className="flex items-center gap-3">
-                                <div className="w-28 text-sm text-gray-600 shrink-0 truncate">{skill.name}</div>
-                                <div className="flex-1 bg-gray-100 rounded-full h-2">
-                                    <div
-                                        className="h-2 rounded-full bg-indigo-500 transition-all"
-                                        style={{ width: `${skill.mastery}%` }}
-                                    />
-                                </div>
-                                <span className="text-xs text-gray-500 w-10 text-right">{skill.mastery.toFixed(0)}%</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 }

@@ -13,17 +13,18 @@ import hashlib
 import time
 import structlog
 
-from backend.api.v1.schemas.activity_schemas import (
+from api.v1.schemas.activity_schemas import (
     ActivityBatchRequest,
     ActivityBatchResponse,
     ActivityBatchResponseItem
 )
-from backend.models import Activity
-from backend.database.postgres import get_db
-from backend.database.redis_client import get_redis_client
-from backend.auth.jwt_handler import get_current_user as get_current_user_from_token
-from backend.services.activity_dedup import ActivityDeduplicator
-from backend.services.event_bus import EventBus
+from models import Activity
+from database.postgres import get_db
+from database.redis_client import get_redis_client
+from auth.jwt_handler import get_current_user as get_current_user_from_token
+from services.activity_dedup import ActivityDeduplicator
+from services.event_bus import EventBus
+from websocket.manager import notify_activity_created
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -101,12 +102,18 @@ async def ingest_activity_batch(
             continue
         
         # Prepare activity for insertion
+        # Normalize activity types for consistency
+        raw_type = activity_item.type
+        TYPE_MAP = {"page_view": "web_visit", "tab_focus": "web_visit",
+                     "window_focus": "app_focus", "reading_analytics": "reading_analytics"}
+        normalized_type = TYPE_MAP.get(raw_type, raw_type)
+
         activity_data = {
             "user_id": user_id,
             "source": request_data.source,
             "source_version": request_data.source_version,
             "client_generated_id": activity_item.client_generated_id,
-            "type": activity_item.type,
+            "type": normalized_type,
             "occurred_at": activity_item.occurred_at,
             "received_at": datetime.utcnow(),
             "duration_seconds": activity_item.duration_seconds,
@@ -166,7 +173,7 @@ async def ingest_activity_batch(
         
         # (Week 7) Queue NER processing task
         try:
-            from backend.tasks.ner_worker import process_activity_ner
+            from tasks.ner_worker import process_activity_ner
             process_activity_ner.delay(str(activity_id))
         except Exception as ner_exc:
             logger.warning("Failed to queue NER task", activity_id=str(activity_id), error=str(ner_exc))
@@ -177,6 +184,17 @@ async def ingest_activity_batch(
             activity_id=activity_id,
             error=None
         ))
+    
+    # Push real-time WebSocket notification to connected dashboard clients
+    if inserted_ids:
+        try:
+            await notify_activity_created(str(user_id), {
+                "count": len(inserted_ids),
+                "source": request_data.source,
+                "types": list(set(a["type"] for a in ingested_activities)),
+            })
+        except Exception as ws_exc:
+            logger.warning("WebSocket notification failed", error=str(ws_exc))
     
     # Calculate metrics
     processing_time_ms = (time.time() - start_time) * 1000

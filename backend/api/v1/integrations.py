@@ -16,9 +16,9 @@ from typing import Optional, Dict, Any
 import uuid
 import structlog
 
-from backend.config import settings
-from backend.database.postgres import get_db
-from backend.models.integration_models import Integration
+from config import settings
+from database.postgres import get_db
+from models.integration_models import Integration
 
 logger = structlog.get_logger()
 
@@ -717,6 +717,334 @@ async def disconnect_notion(
         return {"success": True, "message": "Notion disconnected"}
     except Exception as e:
         logger.error("Failed to disconnect Notion", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+# =====================================================
+# SLACK OAUTH ENDPOINTS
+# =====================================================
+
+@router.post("/slack/oauth/initiate", response_model=OAuthInitiateResponse)
+async def initiate_slack_oauth():
+    """
+    Initiate Slack OAuth flow.
+    Returns authorization URL for user to visit.
+    """
+    try:
+        state = secrets.token_urlsafe(32)
+
+        auth_url = (
+            f"https://slack.com/oauth/v2/authorize"
+            f"?client_id={getattr(settings, 'SLACK_CLIENT_ID', '')}"
+            f"&redirect_uri={getattr(settings, 'SLACK_REDIRECT_URI', '')}"
+            f"&scope=channels:read,chat:write,users:read,users:read.email"
+            f"&state={state}"
+        )
+
+        logger.info("Slack OAuth initiated", state=state)
+        return OAuthInitiateResponse(auth_url=auth_url)
+
+    except Exception as e:
+        logger.error("Failed to initiate Slack OAuth", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initiate Slack OAuth: {str(e)}"
+        )
+
+
+@router.post("/slack/oauth/callback", response_model=IntegrationAuthResponse)
+async def slack_oauth_callback(
+    request: OAuthCallbackRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Handle Slack OAuth callback.
+    Exchanges authorization code for access token and saves to database.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "https://slack.com/api/oauth.v2.access",
+                data={
+                    "client_id": getattr(settings, 'SLACK_CLIENT_ID', ''),
+                    "client_secret": getattr(settings, 'SLACK_CLIENT_SECRET', ''),
+                    "code": request.code,
+                    "redirect_uri": getattr(settings, 'SLACK_REDIRECT_URI', ''),
+                }
+            )
+
+            token_data = token_response.json()
+            if not token_data.get("ok"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Slack OAuth failed: {token_data.get('error', 'unknown')}"
+                )
+
+            access_token = token_data.get("access_token")
+            team_name = token_data.get("team", {}).get("name", "Unknown")
+            team_id = token_data.get("team", {}).get("id")
+            user_info = token_data.get("authed_user", {})
+
+            user_id = uuid.UUID(request.user_id) if request.user_id else uuid.uuid4()
+
+            integration = await save_integration(
+                db=db,
+                user_id=user_id,
+                provider="slack",
+                access_token=access_token,
+                refresh_token=None,
+                username=team_name,
+                email=None,
+                external_id=team_id,
+                provider_metadata={
+                    "team_id": team_id,
+                    "authed_user": user_info,
+                    "scope": token_data.get("scope", ""),
+                }
+            )
+
+            logger.info("Slack OAuth completed", team=team_name)
+
+            return IntegrationAuthResponse(
+                connected=True,
+                provider="slack",
+                username=integration.username,
+                email=integration.email,
+                access_token=access_token
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Slack OAuth callback failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"OAuth callback failed: {str(e)}"
+        )
+
+
+@router.get("/slack/status", response_model=IntegrationStatusResponse)
+async def get_slack_status(
+    user_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get Slack integration status for current user."""
+    try:
+        uid = uuid.UUID(user_id) if user_id else uuid.uuid4()
+        integration = await get_integration_status(db, uid, "slack")
+
+        if integration and integration.connected:
+            return IntegrationStatusResponse(
+                connected=True,
+                username=integration.username,
+                email=integration.email,
+                last_synced=integration.last_synced_at.isoformat() if integration.last_synced_at else None
+            )
+        else:
+            return IntegrationStatusResponse(connected=False)
+
+    except Exception as e:
+        logger.error("Failed to get Slack status", error=str(e))
+        return IntegrationStatusResponse(connected=False, error=str(e))
+
+
+@router.delete("/slack/disconnect")
+async def disconnect_slack(
+    user_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Disconnect Slack integration."""
+    try:
+        uid = uuid.UUID(user_id) if user_id else uuid.uuid4()
+        await remove_integration(db, uid, "slack")
+        logger.info("Slack disconnected")
+        return {"success": True, "message": "Slack disconnected"}
+    except Exception as e:
+        logger.error("Failed to disconnect Slack", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+# =====================================================
+# JIRA OAUTH ENDPOINTS
+# =====================================================
+
+@router.post("/jira/oauth/initiate", response_model=OAuthInitiateResponse)
+async def initiate_jira_oauth():
+    """
+    Initiate Jira OAuth 2.0 flow.
+    Returns authorization URL for user to visit.
+    """
+    try:
+        state = secrets.token_urlsafe(32)
+
+        auth_url = (
+            f"https://auth.atlassian.com/authorize"
+            f"?audience=api.atlassian.com"
+            f"&client_id={getattr(settings, 'JIRA_CLIENT_ID', '')}"
+            f"&scope=read%3Ajira-work%20read%3Ajira-user%20write%3Ajira-work"
+            f"&redirect_uri={getattr(settings, 'JIRA_REDIRECT_URI', '')}"
+            f"&state={state}"
+            f"&response_type=code"
+            f"&prompt=consent"
+        )
+
+        logger.info("Jira OAuth initiated", state=state)
+        return OAuthInitiateResponse(auth_url=auth_url)
+
+    except Exception as e:
+        logger.error("Failed to initiate Jira OAuth", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initiate Jira OAuth: {str(e)}"
+        )
+
+
+@router.post("/jira/oauth/callback", response_model=IntegrationAuthResponse)
+async def jira_oauth_callback(
+    request: OAuthCallbackRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Handle Jira OAuth callback.
+    Exchanges authorization code for access token and saves to database.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "https://auth.atlassian.com/oauth/token",
+                json={
+                    "grant_type": "authorization_code",
+                    "client_id": getattr(settings, 'JIRA_CLIENT_ID', ''),
+                    "client_secret": getattr(settings, 'JIRA_CLIENT_SECRET', ''),
+                    "code": request.code,
+                    "redirect_uri": getattr(settings, 'JIRA_REDIRECT_URI', ''),
+                }
+            )
+
+            if token_response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Failed to exchange code for token: {token_response.text}"
+                )
+
+            token_data = token_response.json()
+            access_token = token_data.get("access_token")
+            refresh_token = token_data.get("refresh_token")
+            expires_in = token_data.get("expires_in")
+
+            if not access_token:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No access token received"
+                )
+
+            token_expires_at = None
+            if expires_in:
+                token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+
+            # Get accessible resources (Jira sites)
+            resources_response = await client.get(
+                "https://api.atlassian.com/oauth/token/accessible-resources",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            resources = resources_response.json() if resources_response.status_code == 200 else []
+            site_name = resources[0].get("name", "Unknown") if resources else "Unknown"
+            cloud_id = resources[0].get("id", "") if resources else ""
+
+            # Get user info
+            if cloud_id:
+                me_response = await client.get(
+                    f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/api/3/myself",
+                    headers={"Authorization": f"Bearer {access_token}"}
+                )
+                user_data = me_response.json() if me_response.status_code == 200 else {}
+            else:
+                user_data = {}
+
+            user_id = uuid.UUID(request.user_id) if request.user_id else uuid.uuid4()
+
+            integration = await save_integration(
+                db=db,
+                user_id=user_id,
+                provider="jira",
+                access_token=access_token,
+                refresh_token=refresh_token,
+                username=user_data.get("displayName", site_name),
+                email=user_data.get("emailAddress"),
+                external_id=cloud_id,
+                token_expires_at=token_expires_at,
+                provider_metadata={
+                    "cloud_id": cloud_id,
+                    "site_name": site_name,
+                    "resources": resources[:3],
+                }
+            )
+
+            logger.info("Jira OAuth completed", site=site_name)
+
+            return IntegrationAuthResponse(
+                connected=True,
+                provider="jira",
+                username=integration.username,
+                email=integration.email,
+                access_token=access_token,
+                expires_at=token_expires_at.isoformat() if token_expires_at else None
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Jira OAuth callback failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"OAuth callback failed: {str(e)}"
+        )
+
+
+@router.get("/jira/status", response_model=IntegrationStatusResponse)
+async def get_jira_status(
+    user_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get Jira integration status for current user."""
+    try:
+        uid = uuid.UUID(user_id) if user_id else uuid.uuid4()
+        integration = await get_integration_status(db, uid, "jira")
+
+        if integration and integration.connected:
+            return IntegrationStatusResponse(
+                connected=True,
+                username=integration.username,
+                email=integration.email,
+                last_synced=integration.last_synced_at.isoformat() if integration.last_synced_at else None
+            )
+        else:
+            return IntegrationStatusResponse(connected=False)
+
+    except Exception as e:
+        logger.error("Failed to get Jira status", error=str(e))
+        return IntegrationStatusResponse(connected=False, error=str(e))
+
+
+@router.delete("/jira/disconnect")
+async def disconnect_jira(
+    user_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Disconnect Jira integration."""
+    try:
+        uid = uuid.UUID(user_id) if user_id else uuid.uuid4()
+        await remove_integration(db, uid, "jira")
+        logger.info("Jira disconnected")
+        return {"success": True, "message": "Jira disconnected"}
+    except Exception as e:
+        logger.error("Failed to disconnect Jira", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

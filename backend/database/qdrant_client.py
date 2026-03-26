@@ -7,7 +7,7 @@ from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, Fi
 from typing import Optional, List, Dict, Any
 import structlog
 
-from backend.config import settings
+from config import settings
 
 logger = structlog.get_logger()
 
